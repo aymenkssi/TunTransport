@@ -6,7 +6,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY server.py auth.py database.py network.py trips.py routing.py admin.py geo.py matching.py vehicles.py admin.html ./
+COPY server.py auth.py database.py network.py trips.py routing.py places.py admin.py geo.py matching.py vehicles.py admin.html ./
 
 RUN useradd --create-home --uid 10001 app
 USER app

@@ -6,7 +6,7 @@ import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { Itinerary, Leg, lineLabel, PlanPlace, planRoute, searchStops, StopHit } from "@/src/api/network";
+import { Itinerary, Leg, lineLabel, PlaceHit, PlanPlace, planRoute, searchPlaces, searchStops, StopHit } from "@/src/api/network";
 import { LineBadge } from "@/src/components/LineBadge";
 import { LineMap } from "@/src/components/LineMap";
 import { MapData } from "@/src/components/map-html";
@@ -28,6 +28,8 @@ export default function RouteScreen() {
   const [picking, setPicking] = useState<Field | null>(null);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<StopHit[]>([]);
+  // Addresses are searched on submit only (Nominatim usage policy: no autocomplete).
+  const [addresses, setAddresses] = useState<{ query: string; hits: PlaceHit[] | null; failed: boolean } | null>(null);
   const [results, setResults] = useState<Itinerary[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -40,7 +42,17 @@ export default function RouteScreen() {
     setPicking(null);
     setQuery("");
     setHits([]);
+    setAddresses(null);
   }, []);
+
+  const findAddress = () => {
+    const q = query.trim();
+    if (q.length < 3) return;
+    setAddresses({ query: q, hits: null, failed: false });
+    searchPlaces(q)
+      .then((found) => setAddresses({ query: q, hits: found, failed: false }))
+      .catch(() => setAddresses({ query: q, hits: [], failed: true }));
+  };
 
   // Stop search, debounced.
   useEffect(() => {
@@ -132,10 +144,12 @@ export default function RouteScreen() {
           autoFocus
           value={query}
           onChangeText={setQuery}
-          placeholder="Arrêt ou station…"
+          placeholder="Arrêt, adresse ou lieu…"
           placeholderTextColor={colors.onSurfaceSecondary}
           style={styles.input}
           autoCorrect={false}
+          returnKeyType="search"
+          onSubmitEditing={findAddress}
         />
       ) : (
         <Text style={[styles.fieldText, !place && styles.placeholder]} numberOfLines={1}>
@@ -187,6 +201,40 @@ export default function RouteScreen() {
               </View>
             </Pressable>
           ))}
+          {query.trim().length >= 3 && addresses?.query !== query.trim() && (
+            <Pressable style={styles.suggestion} onPress={findAddress}>
+              <Ionicons name="search" size={20} color={colors.info} />
+              <Text style={styles.suggestionText} numberOfLines={1}>
+                Rechercher l’adresse « {query.trim()} »
+              </Text>
+            </Pressable>
+          )}
+          {addresses && (
+            <>
+              <Text style={styles.sectionLabel}>Adresses et lieux</Text>
+              {addresses.hits === null ? (
+                <ActivityIndicator color={colors.brand} style={styles.addressLoading} />
+              ) : addresses.failed ? (
+                <Text style={styles.error}>Recherche d’adresse indisponible pour le moment.</Text>
+              ) : addresses.hits.length === 0 ? (
+                <Text style={styles.empty}>Aucune adresse trouvée pour « {addresses.query} ».</Text>
+              ) : (
+                addresses.hits.map((h, k) => (
+                  <Pressable key={k} style={styles.suggestion} onPress={() => setPlace(editing, { lat: h.lat, lon: h.lon, name: h.name })}>
+                    <Ionicons name="home-outline" size={20} color={colors.onSurfaceSecondary} />
+                    <View style={styles.suggestionBody}>
+                      <Text style={styles.suggestionText} numberOfLines={1}>{h.name}</Text>
+                      {h.detail ? <Text style={styles.detail} numberOfLines={1}>{h.detail}</Text> : null}
+                      {h.stop_distance_m !== null && h.stop_distance_m > 1200 && (
+                        <Text style={styles.far}>Loin du réseau : arrêt le plus proche à {formatDistance(h.stop_distance_m)}</Text>
+                      )}
+                    </View>
+                  </Pressable>
+                ))
+              )}
+              <Text style={styles.credit}>Adresses © contributeurs OpenStreetMap</Text>
+            </>
+          )}
           <Pressable style={styles.cancel} onPress={() => setEditing(null)}>
             <Text style={styles.cancelText}>Annuler</Text>
           </Pressable>
@@ -318,6 +366,12 @@ const makeStyles = (c: Colors) =>
     suggestionText: { color: c.onSurface, fontSize: type.lg },
     badges: { flexDirection: "row", flexWrap: "wrap", gap: 4 },
     cancel: { padding: spacing.md, alignItems: "center" },
+    sectionLabel: { color: c.onSurfaceSecondary, fontSize: type.sm, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
+    addressLoading: { padding: spacing.md },
+    empty: { color: c.onSurfaceSecondary, fontSize: type.sm, paddingHorizontal: spacing.md },
+    detail: { color: c.onSurfaceSecondary, fontSize: type.sm },
+    far: { color: c.warning, fontSize: type.sm },
+    credit: { color: c.onSurfaceSecondary, fontSize: 11, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
     cancelText: { color: c.info, fontWeight: "600", fontSize: type.base },
     mapWrap: { height: 260 },
     pickBanner: { position: "absolute", top: spacing.sm, left: spacing.md, right: spacing.md, backgroundColor: c.onSurface, borderRadius: radius.md, padding: spacing.sm + 2 },

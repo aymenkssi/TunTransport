@@ -113,3 +113,15 @@ export const searchStops = (q: string) => request<StopHit[]>(`/stops/search?q=${
 
 export const planRoute = (origin: PlanPlace, destination: PlanPlace) =>
   request<Itinerary[]>("/routes/plan", { method: "POST", body: JSON.stringify({ origin, destination }) });
+
+export type PlaceHit = {
+  name: string;
+  detail: string;
+  lat: number;
+  lon: number;
+  kind: string | null;
+  stop_distance_m: number | null; // distance to the nearest stop of the network
+};
+
+/** Addresses and places (OpenStreetMap). Call on submit only: Nominatim forbids autocomplete. */
+export const searchPlaces = (q: string) => request<PlaceHit[]>(`/places/search?q=${encodeURIComponent(q)}`);

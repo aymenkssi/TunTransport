@@ -59,7 +59,7 @@ export default function AboutScreen() {
         <Text style={styles.dangerText}>Supprimer mes données</Text>
       </Pressable>
       <Text style={styles.small}>
-        Lignes, arrêts et horaires : tunismapper.com. Carte : OpenFreeMap, données © contributeurs OpenStreetMap.
+        Lignes, arrêts et horaires : tunismapper.com. Carte et adresses : OpenFreeMap et Nominatim, données © contributeurs OpenStreetMap.
       </Text>
     </ScrollView>
   );

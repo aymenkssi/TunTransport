@@ -126,5 +126,6 @@ docker compose exec -T mongo mongorestore --gzip --archive=/backups/tuntransport
 | `GET /api/vehicles/live` | Tous les véhicules en direct du réseau, avec la ligne, sa couleur et son numéro (carte d'accueil de l'app). |
 | `GET /api/live` | Nombre de véhicules en direct par ligne. |
 | `GET /api/stops/search?q=` | Arrêts dont le nom contient `q`, avec leurs lignes. |
+| `GET /api/places/search?q=` | Adresses et lieux en Tunisie (OpenStreetMap / Nominatim), d'abord ceux proches d'un arrêt. Une requête par seconde au plus vers Nominatim, résultats en cache 7 jours ; l'app ne cherche qu'à la validation (Nominatim interdit l'auto-complétion). |
 | `POST /api/routes/plan` | Itinéraire d'un arrêt ou d'un point à un autre, au départ de maintenant : marche, correspondances (400 m max), jusqu'à 3 propositions. Attente « en direct » si un passager partage un véhicule qui approche, sinon horaire officiel (trains, RFR) ou estimation (métro, bus). |
 | `/api/admin/…` et `/admin` | Administration (jeton `ADMIN_TOKEN` obligatoire). |
