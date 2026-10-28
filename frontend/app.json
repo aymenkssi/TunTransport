@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "TunTransport",
+    "name": "TransTunisLive",
     "slug": "tuntransport",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -15,7 +15,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#E70013"
+        "backgroundColor": "#0A4FC4"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.aymenkssi.tuntransport"
@@ -31,15 +31,18 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 160,
+          "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#E70013"
+          "backgroundColor": "#FFFFFF",
+          "dark": {
+            "backgroundColor": "#0F1115"
+          }
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "TunTransport utilise votre position uniquement pendant un trajet que vous choisissez de partager.",
+          "locationWhenInUsePermission": "TransTunisLive utilise votre position uniquement pendant un trajet que vous choisissez de partager.",
           "isAndroidForegroundServiceEnabled": true,
           "isAndroidBackgroundLocationEnabled": false,
           "isIosBackgroundLocationEnabled": true

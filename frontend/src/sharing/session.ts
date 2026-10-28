@@ -76,7 +76,7 @@ async function startUpdates(): Promise<void> {
     activityType: Location.ActivityType.OtherNavigation,
     foregroundService: {
       notificationTitle: "Partage de trajet actif",
-      notificationBody: "Votre position aide les autres voyageurs. Ouvrez TunTransport pour arrêter.",
+      notificationBody: "Votre position aide les autres voyageurs. Ouvrez TransTunisLive pour arrêter.",
       notificationColor: "#E70013",
       killServiceOnDestroy: false,
     },

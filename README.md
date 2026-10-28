@@ -1,4 +1,7 @@
-# TunTransport
+# TransTunisLive
+
+Nom de l'application : **TransTunisLive** (projet, dépôt et domaine `tuntransport.academy` inchangés).
+
 
 Application Android collaborative : les passagers partagent en temps réel la position du bus, métro ou
 train qu'ils empruntent, pour que les autres sachent où il se trouve. Un « Waze des transports publics »

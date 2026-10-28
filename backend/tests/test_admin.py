@@ -10,7 +10,7 @@ def test_admin_requires_token(api, monkeypatch):
 
 def test_admin_page_is_served(api):
     r = api.get("/admin")
-    assert r.status_code == 200 and "TunTransport" in r.text
+    assert r.status_code == 200 and "TransTunisLive" in r.text
 
 
 def test_stats_and_live(api, clock, user):
