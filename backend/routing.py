@@ -1,7 +1,9 @@
 """Calcul d'itinéraire : marche + métro, bus, RFR et train, avec correspondances.
 
 - GET  /api/stops/search?q=      : arrêts dont le nom contient q (pour choisir départ et arrivée).
-- POST /api/routes/plan          : itinéraires d'un point (ou arrêt) à un autre, au départ de maintenant.
+- POST /api/routes/plan          : itinéraires d'un point (ou arrêt) à un autre, au départ de maintenant ou
+                                   d'une heure choisie. Si plus rien ne circule (la nuit), propose le
+                                   premier trajet possible, marqué `later`.
 
 Modèle d'attente à un arrêt, du plus fiable au moins fiable :
 1. « en direct » : un véhicule partagé par des passagers approche de l'arrêt ;
@@ -49,6 +51,7 @@ SCHEDULED_MODES = {"rfr", "train"}
 LAST_SERVICE_GRACE_MIN = 30
 MAX_SCHEDULED_WAIT_MIN = 180
 MAX_LIVE_HORIZON_S = 1800
+MAX_DEPART_AHEAD_S = 3 * 86400
 
 
 # ------------------------ Graphe ------------------------
@@ -323,6 +326,7 @@ class Place(BaseModel):
 class PlanRequest(BaseModel):
     origin: Place
     destination: Place
+    depart_at: Optional[float] = Field(default=None, description="heure de départ (secondes epoch) ; maintenant si absent")
 
 
 class LegPlace(BaseModel):
@@ -360,6 +364,8 @@ class Itinerary(BaseModel):
     transfers: int
     live: bool
     legs: List[Leg]
+    date: str = ""        # jour du départ (AAAA-MM-JJ, heure de Tunis)
+    later: bool = False   # rien à l'heure demandée : premier trajet possible
 
 
 def _hhmm(ts: float) -> str:
@@ -379,10 +385,21 @@ def _resolve(g: Graph, place: Place, default_name: str) -> dict:
             "stops": stops_near(g, place.lat, place.lon, MAX_ACCESS_WALK_M), "is_stop": False}
 
 
-def _itinerary(legs: List[dict], depart: float) -> Itinerary:
-    """`depart` : heure à laquelle on part (maintenant), attente au premier arrêt comprise dans la durée."""
+def _itinerary(legs: List[dict], depart: float, later: bool = False) -> Itinerary:
+    """`depart` : heure à laquelle on part, attente au premier arrêt comprise dans la durée."""
     rides = [l for l in legs if l["kind"] == "ride"]
     arrive = legs[-1]["arrive"]
+    if later and rides:
+        # Premier trajet possible : partir juste à temps pour le premier véhicule, sans attendre.
+        access = sum(l["arrive"] - l["depart"] for l in legs[:legs.index(rides[0])])
+        depart = rides[0]["depart"] - access
+        first = legs.index(rides[0])
+        shift = 0.0
+        for k in range(first):  # recale la marche d'accès juste avant le départ du véhicule
+            dur = legs[k]["arrive"] - legs[k]["depart"]
+            legs[k] = {**legs[k], "depart": depart + shift, "arrive": depart + shift + dur}
+            shift += dur
+        legs[first] = {**legs[first], "wait_s": 0}
     out = []
     for leg in legs:
         leg = {**leg, "depart": _hhmm(leg["depart"]), "arrive": _hhmm(leg["arrive"])}
@@ -391,7 +408,34 @@ def _itinerary(legs: List[dict], depart: float) -> Itinerary:
         depart=_hhmm(depart), arrive=_hhmm(arrive), duration_s=round(arrive - depart),
         walk_m=round(sum(l["distance_m"] or 0 for l in legs if l["kind"] == "walk")),
         transfers=max(0, len(rides) - 1), live=any(r["wait_source"] == "en direct" for r in rides), legs=out,
+        date=datetime.fromtimestamp(depart, TUNIS_TZ).date().isoformat(), later=later,
     )
+
+
+def next_service_time(g: Graph, origin: dict, t: float) -> Optional[float]:
+    """Première heure, après `t`, où une ligne desservant les arrêts proches du départ circule à nouveau."""
+    local = datetime.fromtimestamp(t, TUNIS_TZ)
+    now_min = local.hour * 60 + local.minute
+    midnight = local.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+    best = None
+    for sid, _ in origin["stops"]:
+        for pi, _pos in g.at_stop.get(sid, []):
+            p = g.patterns[pi]
+            timetable = p.line.data.get("timetable", {})
+            times = timetable.get(sid, {}).get(p.headsign) or [
+                x for by_dir in timetable.values() for x in by_dir.get(p.headsign, [])]
+            minutes = sorted(m for m in (_minutes(x) for x in times) if m is not None)
+            if not minutes:
+                continue
+            if p.mode in SCHEDULED_MODES:
+                nxt = next((m for m in minutes if m > now_min), None)
+                start = midnight + nxt * 60 if nxt is not None else midnight + 86400 + minutes[0] * 60
+            else:
+                opening = minutes[0] - 15  # même fenêtre de service que scheduled_wait
+                start = midnight + opening * 60 if opening > now_min else midnight + 86400 + opening * 60
+            if start > t and (best is None or start < best):
+                best = start
+    return best
 
 
 router = APIRouter(prefix="/api")
@@ -429,26 +473,21 @@ async def plan(payload: PlanRequest):
     origin = _resolve(g, payload.origin, "Départ")
     dest = _resolve(g, payload.destination, "Arrivée")
     now = trips.now()
-    live = [v for v in trips.visible(vh.cluster_vehicles(await trips._fresh_contributions(), now))
-            if vh.reliability(v, now)[1] != "expiré"]
+    t0 = now if payload.depart_at is None else payload.depart_at
+    if not now - 600 <= t0 <= now + MAX_DEPART_AHEAD_S:
+        raise HTTPException(422, "depart_at must be between now and 3 days ahead")
+    # Les véhicules en direct ne servent que pour un départ proche.
+    live = [] if t0 - now > MAX_LIVE_HORIZON_S else [
+        v for v in trips.visible(vh.cluster_vehicles(await trips._fresh_contributions(), now))
+        if vh.reliability(v, now)[1] != "expiré"]
 
-    results: List[Itinerary] = []
-    seen = set()
-    banned: frozenset = frozenset()
-    for _ in range(MAX_RESULTS + 2):
-        end = _search(g, origin, dest, now, now, live, banned)
-        if end is None:
-            break
-        legs = _legs(g, end, origin, dest)
-        rides = tuple(l["line"]["id"] for l in legs if l["kind"] == "ride")
-        if rides and rides not in seen:
-            seen.add(rides)
-            results.append(_itinerary(legs, now))
-        if not rides or len(results) >= MAX_RESULTS:
-            break
-        # Alternative suivante : sans la ligne la plus longue de cet itinéraire.
-        longest = max((l for l in legs if l["kind"] == "ride"), key=lambda l: l["arrive"] - l["depart"])
-        banned = banned | {longest["line"]["id"]}
+    results = _transit(g, origin, dest, t0, now, live)
+    if not results:
+        # Plus rien ne circule (la nuit) : premier trajet possible.
+        later = next_service_time(g, origin, t0)
+        if later is not None and later - t0 <= MAX_DEPART_AHEAD_S:
+            results = _transit(g, origin, dest, later, now, [], later=True)
+    now = t0  # la marche directe part à l'heure demandée
 
     direct = haversine_m((origin["lat"], origin["lon"]), (dest["lat"], dest["lon"]))
     if direct <= DIRECT_WALK_MAX_M:
@@ -463,3 +502,26 @@ async def plan(payload: PlanRequest):
         fastest = min(r.duration_s for r in results)
         results = [r for r in results if r.duration_s <= fastest + MAX_EXTRA_MIN * 60]
     return results[:MAX_RESULTS + 1]
+
+
+def _transit(g: Graph, origin: dict, dest: dict, t0: float, now: float, live: List[vh.Vehicle],
+             later: bool = False) -> List[Itinerary]:
+    """Jusqu'à MAX_RESULTS itinéraires en transport, au départ de `t0`."""
+    results: List[Itinerary] = []
+    seen = set()
+    banned: frozenset = frozenset()
+    for _ in range(MAX_RESULTS + 2):
+        end = _search(g, origin, dest, t0, now, live, banned)
+        if end is None:
+            break
+        legs = _legs(g, end, origin, dest)
+        rides = tuple(l["line"]["id"] for l in legs if l["kind"] == "ride")
+        if rides and rides not in seen:
+            seen.add(rides)
+            results.append(_itinerary(legs, t0, later))
+        if not rides or len(results) >= MAX_RESULTS:
+            break
+        # Alternative suivante : sans la ligne la plus longue de cet itinéraire.
+        longest = max((l for l in legs if l["kind"] == "ride"), key=lambda l: l["arrive"] - l["depart"])
+        banned = banned | {longest["line"]["id"]}
+    return results

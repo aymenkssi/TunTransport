@@ -50,10 +50,10 @@ def test_live_vehicle_sets_the_wait(api, clock, user):
     assert leg["wait_source"] == "en direct" and leg["wait_s"] < 600
 
 
-def test_no_service_at_night(api, clock):
+def test_no_service_at_night_with_a_far_origin(api, clock):
     at(clock, 23, 30)
-    itineraries = plan(api, {"stop_id": "s1"}, {"stop_id": "s3"})
-    assert all(l["kind"] == "walk" for i in itineraries for l in i["legs"])
+    # Aucun arrêt à moins de 1,2 km : ni trajet maintenant, ni premier trajet du lendemain.
+    assert plan(api, {"lat": LAT + 0.05, "lon": 10.15, "name": "Loin"}, {"stop_id": "s3"}) == []
 
 
 def test_scheduled_mode_uses_timetable(api, clock, monkeypatch):
@@ -67,3 +67,22 @@ def test_scheduled_mode_uses_timetable(api, clock, monkeypatch):
 def test_place_validation(api):
     assert api.post("/api/routes/plan", json={"origin": {}, "destination": {"stop_id": "s1"}}).status_code == 422
     assert api.post("/api/routes/plan", json={"origin": {"stop_id": "nope"}, "destination": {"stop_id": "s1"}}).status_code == 404
+
+
+def test_night_proposes_first_trip_tomorrow(api, clock):
+    at(clock, 23, 30)
+    rides = [i for i in plan(api, {"stop_id": "s1"}, {"stop_id": "s3"}) if i["legs"][0]["kind"] == "ride"]
+    assert rides, "le premier trajet du lendemain doit être proposé"
+    first = rides[0]
+    assert first["later"] is True and first["date"] == "2027-01-16"
+    assert first["legs"][0]["depart"] == "06:00" and first["depart"] == "06:00" and first["legs"][0]["wait_s"] == 0
+
+
+def test_choose_departure_time(api, clock):
+    at(clock, 23, 30)
+    morning = datetime(2027, 1, 16, 6, 10, tzinfo=routing.TUNIS_TZ).timestamp()
+    r = api.post("/api/routes/plan", json={"origin": {"stop_id": "s1"}, "destination": {"stop_id": "s3"}, "depart_at": morning}).json()
+    first = next(i for i in r if i["legs"][0]["kind"] == "ride")
+    assert (first["later"], first["date"], first["depart"]) == (False, "2027-01-16", "06:10")
+    too_far = clock.t + 4 * 86400
+    assert api.post("/api/routes/plan", json={"origin": {"stop_id": "s1"}, "destination": {"stop_id": "s3"}, "depart_at": too_far}).status_code == 422

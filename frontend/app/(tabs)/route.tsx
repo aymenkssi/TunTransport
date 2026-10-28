@@ -17,6 +17,35 @@ type Field = "origin" | "destination";
 type Place = PlanPlace & { lat: number; lon: number };
 
 const WALK_COLOR = "#6B7280";
+
+type DepartChoice = { label: string; at: () => number | null };
+const tomorrowAt = (h: number) => () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(h, 0, 0, 0);
+  return Math.floor(d.getTime() / 1000);
+};
+const inMinutes = (m: number) => () => Math.floor(Date.now() / 1000) + m * 60;
+const DEPART_CHOICES: DepartChoice[] = [
+  { label: "Maintenant", at: () => null },
+  { label: "Dans 30 min", at: inMinutes(30) },
+  { label: "Dans 1 h", at: inMinutes(60) },
+  { label: "Dans 2 h", at: inMinutes(120) },
+  { label: "Demain 7 h", at: tomorrowAt(7) },
+  { label: "Demain 9 h", at: tomorrowAt(9) },
+];
+
+/** "Demain", "Après-demain" or a date, when the trip is not today. */
+function dayLabel(date: string): string | null {
+  const today = new Date();
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  if (!date || date === iso(today)) return null;
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  if (date === iso(tomorrow)) return "Demain";
+  const [y, m, d] = date.split("-");
+  return `Le ${d}/${m}${y === String(today.getFullYear()) ? "" : `/${y}`}`;
+}
 const minutes = (s: number) => `${Math.max(1, Math.round(s / 60))} min`;
 
 export default function RouteScreen() {
@@ -35,6 +64,8 @@ export default function RouteScreen() {
   const [failed, setFailed] = useState(false);
   const [selected, setSelected] = useState(0);
   const [locError, setLocError] = useState(false);
+  const [departChoice, setDepartChoice] = useState(0);
+  const [choosingTime, setChoosingTime] = useState(false);
 
   const setPlace = useCallback((field: Field, place: Place) => {
     (field === "origin" ? setOrigin : setDestination)(place);
@@ -71,20 +102,20 @@ export default function RouteScreen() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Plan as soon as both ends are known.
+  // Plan as soon as both ends are known, and again when the departure time changes.
   useEffect(() => {
     if (!origin || !destination) return;
     let cancelled = false;
     setLoading(true);
     setFailed(false);
-    planRoute(origin, destination)
+    planRoute(origin, destination, DEPART_CHOICES[departChoice].at())
       .then((r) => !cancelled && (setResults(r), setSelected(0)))
       .catch(() => !cancelled && (setResults(null), setFailed(true)))
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [origin, destination]);
+  }, [origin, destination, departChoice]);
 
   const pickMyPosition = async (field: Field) => {
     setLocError(false);
@@ -176,6 +207,31 @@ export default function RouteScreen() {
           <Ionicons name="swap-vertical" size={22} color={colors.onSurface} />
         </Pressable>
       </View>
+      {!editing && (
+        <View style={styles.timeRow}>
+          <Pressable style={styles.timeButton} onPress={() => setChoosingTime((v) => !v)} accessibilityLabel="Heure de départ">
+            <Ionicons name="time-outline" size={16} color={colors.onSurface} />
+            <Text style={styles.timeText}>Départ : {DEPART_CHOICES[departChoice].label.toLowerCase()}</Text>
+            <Ionicons name={choosingTime ? "chevron-up" : "chevron-down"} size={14} color={colors.onSurfaceSecondary} />
+          </Pressable>
+          {choosingTime && (
+            <View style={styles.timeChoices}>
+              {DEPART_CHOICES.map((c, i) => (
+                <Pressable
+                  key={c.label}
+                  style={[styles.timeChip, i === departChoice && styles.timeChipActive]}
+                  onPress={() => {
+                    setDepartChoice(i);
+                    setChoosingTime(false);
+                  }}
+                >
+                  <Text style={[styles.timeChipText, i === departChoice && styles.timeChipTextActive]}>{c.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
 
       {editing ? (
         <ScrollView style={styles.suggestions} keyboardShouldPersistTaps="handled">
@@ -264,13 +320,24 @@ export default function RouteScreen() {
             ) : failed ? (
               <Text style={styles.error}>Le serveur ne répond pas. Réessayez dans un instant.</Text>
             ) : results && results.length === 0 ? (
-              <Text style={styles.hint}>Aucun trajet trouvé maintenant : la ligne ne circule peut-être plus, ou les arrêts sont trop loin (plus de 1,2 km à pied).</Text>
+              <Text style={styles.hint}>Aucun trajet trouvé : le départ ou l’arrivée est à plus de 1,2 km à pied d’un arrêt desservi. Essayez un point plus proche d’une ligne.</Text>
             ) : (
-              results?.map((it, i) => (
+              <>
+              {results?.[0]?.later && (
+                <View style={styles.laterBanner}>
+                  <Ionicons name="moon-outline" size={18} color={colors.warning} />
+                  <Text style={styles.laterText}>
+                    Plus de transport à cette heure. Premier trajet possible : {(dayLabel(results[0].date) ?? "aujourd’hui").toLowerCase()} à {results[0].depart}.
+                  </Text>
+                </View>
+              )}
+              {results?.map((it, i) => (
                 <Pressable key={i} style={[styles.card, i === selected && styles.cardSelected]} onPress={() => setSelected(i)}>
                   <View style={styles.cardHead}>
                     <Text style={styles.duration}>{minutes(it.duration_s)}</Text>
-                    <Text style={styles.times}>{it.depart} → {it.arrive}</Text>
+                    <Text style={styles.times}>
+                      {dayLabel(it.date) ? `${dayLabel(it.date)} ` : ""}{it.depart} → {it.arrive}
+                    </Text>
                     {it.live && (
                       <View style={styles.livePill}>
                         <View style={styles.liveDot} />
@@ -298,7 +365,8 @@ export default function RouteScreen() {
                   </Text>
                   {i === selected && <Steps legs={it.legs} styles={styles} colors={colors} />}
                 </Pressable>
-              ))
+              ))}
+              </>
             )}
             {results && results.length > 0 && (
               <Text style={styles.note}>
@@ -334,7 +402,7 @@ function Steps({ legs, styles, colors }: { legs: Leg[]; styles: Styles; colors: 
                 Vers {leg.headsign} · départ {leg.depart} · {leg.stops} arrêt{(leg.stops ?? 0) > 1 ? "s" : ""} · arrivée {leg.arrive}
               </Text>
               <Text style={[styles.stepWait, leg.wait_source === "en direct" && { color: colors.ok }]}>
-                Attente {minutes(leg.wait_s ?? 0)} · {leg.wait_source === "en direct" ? "véhicule en direct" : leg.wait_source === "horaire" ? "horaire officiel" : "estimation"}
+                {leg.wait_s ? `Attente ${minutes(leg.wait_s)}` : "Sans attente"} · {leg.wait_source === "en direct" ? "véhicule en direct" : leg.wait_source === "horaire" ? "horaire officiel" : "estimation"}
               </Text>
               {leg.line && (
                 <Pressable onPress={() => router.push(`/line/${leg.line!.id}`)}>
@@ -408,4 +476,14 @@ const makeStyles = (c: Colors) =>
     stepWait: { color: c.onSurfaceSecondary, fontSize: type.sm },
     link: { color: c.info, fontSize: type.sm, fontWeight: "600", marginTop: 2 },
     note: { color: c.onSurfaceSecondary, fontSize: type.sm, lineHeight: 18 },
+    timeRow: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm, gap: spacing.sm },
+    timeButton: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", paddingVertical: 4 },
+    timeText: { color: c.onSurface, fontSize: type.base, fontWeight: "600" },
+    timeChoices: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+    timeChip: { paddingHorizontal: spacing.sm + 4, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border },
+    timeChipActive: { backgroundColor: c.onSurface, borderColor: c.onSurface },
+    timeChipText: { color: c.onSurface, fontSize: type.sm, fontWeight: "600" },
+    timeChipTextActive: { color: c.surface },
+    laterBanner: { flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: c.warningSoft, borderRadius: radius.md, padding: spacing.sm + 4 },
+    laterText: { flex: 1, color: c.onSurface, fontSize: type.base, lineHeight: 20 },
   });

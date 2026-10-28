@@ -31,6 +31,8 @@ Collaborative Android app where passengers share the live position of the public
 - [x] Anti-fraud (backend/trust.py): stationary (<100 m in 4 min, off terminus), walking (3–7 km/h avg, no
   peak >10 km/h over 3 min), mocked GPS (trip ended), hidden reputation (confirmed vs solo/rejected/
   reported/mocked; untrusted-only vehicles hidden), "vehicle does not exist" reports (2, or 3 if confirmed).
+- [x] Planner: departure time choice (now, +30 min…, tomorrow) and, when nothing runs (night), the first
+  possible trip from the timetables of the lines near the origin, departing just in time.
 - [x] Local address index for Grand Tunis (tools/import_places.py from Overpass, backend/geocoder.py):
   typo tolerance (1 edit/word), prefix autocomplete, house numbers, aliases (Avicenne = Ibn Sina, roman
   numerals), Arabic names, optional quartier/city words; Nominatim only as a submit-time fallback.

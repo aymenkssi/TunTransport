@@ -112,6 +112,8 @@ export type Itinerary = {
   transfers: number;
   live: boolean;
   legs: Leg[];
+  date: string; // departure day, YYYY-MM-DD (Tunis time)
+  later: boolean; // nothing at the requested time: first possible trip
 };
 
 /** A place for the planner: a stop, or a point (my position, a point tapped on the map). */
@@ -119,8 +121,12 @@ export type PlanPlace = { stop_id: string; name: string } | { lat: number; lon: 
 
 export const searchStops = (q: string) => request<StopHit[]>(`/stops/search?q=${encodeURIComponent(q)}`);
 
-export const planRoute = (origin: PlanPlace, destination: PlanPlace) =>
-  request<Itinerary[]>("/routes/plan", { method: "POST", body: JSON.stringify({ origin, destination }) });
+/** `departAt`: seconds since epoch; omitted = now. */
+export const planRoute = (origin: PlanPlace, destination: PlanPlace, departAt?: number | null) =>
+  request<Itinerary[]>("/routes/plan", {
+    method: "POST",
+    body: JSON.stringify({ origin, destination, ...(departAt ? { depart_at: departAt } : {}) }),
+  });
 
 export type PlaceHit = {
   name: string;
