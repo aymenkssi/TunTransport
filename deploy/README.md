@@ -4,7 +4,7 @@ Ce dossier lance trois conteneurs avec Docker Compose :
 
 | Service | Rôle | Exposé sur Internet |
 |---|---|---|
-| `caddy` | HTTPS automatique (Let's Encrypt) : sert l'API sur `api.<domaine>` et le site sur `<domaine>` | oui (ports 80 et 443) |
+| `caddy` | HTTPS automatique (Let's Encrypt) : sert l'API sur `api.tuntransport.academy` et le site sur `tuntransport.academy` | oui (ports 80 et 443) |
 | `api` | API FastAPI : lignes, trajets partagés, véhicules en direct, administration | non (seulement via Caddy) |
 | `mongo` | Base MongoDB 7 avec mot de passe, données dans un volume | non |
 
@@ -12,7 +12,7 @@ Ce dossier lance trois conteneurs avec Docker Compose :
 
 **Prérequis** : un VPS Linux (Ubuntu 22.04/24.04 ou Debian 12, 1 vCPU et 1 Go de RAM suffisent), un nom de domaine, l'accès root en SSH, et `python3` (pour importer les lignes).
 
-## 1. Nom de domaine
+## 1. Nom de domaine `tuntransport.academy`
 
 Dans la zone DNS du domaine, créez ces enregistrements en remplaçant `IP_DU_VPS` par l'adresse IPv4 du VPS :
 
@@ -22,7 +22,9 @@ Dans la zone DNS du domaine, créez ces enregistrements en remplaçant `IP_DU_VP
 | A | `www` | `IP_DU_VPS` |
 | A | `api` | `IP_DU_VPS` |
 
-Vérifiez que `ping api.<domaine>` répond avec l'IP du VPS avant de continuer : Caddy en a besoin pour obtenir les certificats HTTPS.
+Au 28 octobre 2026, `tuntransport.academy` ne résout pas encore (domaine pas encore enregistré, ou enregistrement en cours de propagation) : achetez-le ou vérifiez son statut chez le registrar, puis créez les 3 enregistrements.
+
+Vérifiez que `ping api.tuntransport.academy` répond avec l'IP du VPS avant de continuer : Caddy en a besoin pour obtenir les certificats HTTPS.
 
 ## 2. Préparer le VPS
 
@@ -42,7 +44,7 @@ cp .env.example .env
 nano .env
 ```
 
-- `DOMAIN=api.<domaine>` et `SITE_DOMAIN=<domaine>`.
+- `DOMAIN=api.tuntransport.academy` et `SITE_DOMAIN=tuntransport.academy` (déjà remplis).
 - `MONGO_PASSWORD` : un mot de passe long (`openssl rand -hex 24`).
 - `ADMIN_TOKEN` : le jeton de la page d'administration (`openssl rand -hex 32`).
 
@@ -66,7 +68,7 @@ crontab -e                   # puis ajouter :
 ```bash
 docker compose up -d --build
 docker compose ps                     # les 3 services doivent être "running"/"healthy"
-curl https://api.<domaine>/api/       # {"message":"TunTransport API online","lines":228}
+curl https://api.tuntransport.academy/api/       # {"message":"TunTransport API online","lines":228}
 ```
 
 Mise à jour après un `git pull` : `docker compose up -d --build`. Journaux : `docker compose logs -f api`.
@@ -79,14 +81,14 @@ Mise à jour après un `git pull` : `docker compose up -d --build`. Journaux : `
 
 ## 6. Application et site web
 
-- Dans `frontend/eas.json`, remplacez `https://api.example.com` par `https://api.<domaine>` dans les trois profils, puis compilez avec EAS (voir le README principal).
-- **Site** (`deploy/site/`) : page d'accueil et politique de confidentialité sur `https://<domaine>/privacy`. **Avant la mise en ligne**, remplacez `[NOM DU RESPONSABLE]` et `[ADRESSE E-MAIL DE CONTACT]` dans `privacy.html` et `index.html`.
-- **Play Console** → Fiche du Store : site `https://<domaine>`, règles de confidentialité `https://<domaine>/privacy`. Sécurité des données → Suppression : l'utilisateur supprime ses données depuis l'app (À propos → Supprimer mes données).
+- L'application est déjà branchée sur `https://api.tuntransport.academy` pour tous les profils de build (`frontend/eas.json`).
+- **Site** (`deploy/site/`) : page d'accueil et politique de confidentialité sur `https://tuntransport.academy/privacy`. **Avant la mise en ligne**, remplacez `[NOM DU RESPONSABLE]` et `[ADRESSE E-MAIL DE CONTACT]` dans `privacy.html` et `index.html`.
+- **Play Console** → Fiche du Store : site `https://tuntransport.academy`, règles de confidentialité `https://tuntransport.academy/privacy`. Sécurité des données → Suppression : l'utilisateur supprime ses données depuis l'app (À propos → Supprimer mes données).
 - **Play Console → Déclaration de service au premier plan** : l'app utilise un service de type `location` pendant un trajet que l'utilisateur lance lui-même ; elle ne demande pas la localisation en arrière-plan permanente (`ACCESS_BACKGROUND_LOCATION`).
 
 ## 7. Administration
 
-Page : **https://api.<domaine>/admin**, avec le `ADMIN_TOKEN` de `deploy/.env`. Le jeton reste dans l'onglet jusqu'à sa fermeture.
+Page : **https://api.tuntransport.academy/admin**, avec le `ADMIN_TOKEN` de `deploy/.env`. Le jeton reste dans l'onglet jusqu'à sa fermeture.
 
 - **En direct** : véhicules signalés sur tout le réseau (ligne, sens, position, vitesse, nombre de passagers, âge, fiabilité), actualisés toutes les 10 s.
 - **Statistiques** : utilisateurs, trajets en cours, du jour et des 7 derniers jours, trajets validés, contributeurs, trajets par jour sur 14 jours, lignes les plus partagées.

@@ -68,8 +68,8 @@ yarn start:dev-client           # ensuite, pour les modifications JS/TS (recharg
 ```
 
 Ou avec EAS (dans le cloud) : `yarn build:android:dev` (APK de développement), `yarn build:android:preview`
-(APK à partager), `yarn build:android:prod` (AAB pour Google Play). Remplacez d'abord `https://api.example.com`
-dans `eas.json` par l'adresse de votre API.
+(APK à partager), `yarn build:android:prod` (AAB pour Google Play). Les profils EAS pointent vers
+`https://api.tuntransport.academy` (voir `eas.json`).
 
 Version web, pratique pour tester l'interface : `yarn web` (le partage marche tant que la page reste ouverte).
 

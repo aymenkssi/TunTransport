@@ -35,7 +35,7 @@ Collaborative Android app where passengers share the live position of the public
 - Positions are polled (10 s), not pushed.
 
 ## Backlog / Next
-- P0: domain + deploy; replace `https://api.example.com` in eas.json; first field tests on metro lines.
+- P0: register tuntransport.academy DNS + deploy (eas.json already points to api.tuntransport.academy); first field tests on metro lines.
 - P1: better shapes (OpenStreetMap relations, or learned from shared trips).
 - P1: "my bus is coming" notifications; stable vehicle ids; automatic line suggestion in the share flow.
 - P2: WebSocket push; learned ETA per segment and hour; contributor reputation; reports (crowded,
