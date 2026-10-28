@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TunTransport</string>
+    <string name="search_hint">Ligne, destination…</string>
+    <string name="share_start">Je suis dans ce véhicule</string>
+    <string name="share_stop">Arrêter le partage</string>
+    <string name="share_channel">Partage de trajet</string>
+    <string name="share_notification_title">Partage de position actif</string>
+    <string name="share_notification_text">%1$s vers %2$s — touchez Arrêter pour cesser immédiatement</string>
+    <string name="permission_needed">La localisation est nécessaire pour partager la position du véhicule.</string>
+    <string name="status_pending">Vérification du trajet… restez quelques secondes dans le véhicule.</string>
+    <string name="status_on_route">Position partagée — %1$d km/h, %2$d m depuis le terminus.</string>
+    <string name="status_off_route">Non diffusé : %1$s</string>
+    <string name="back">Retour</string>
+    <string name="all_modes">Tout</string>
+    <string name="stops_count">%1$d arrêts</string>
+    <string name="direction_to">Vers %1$s</string>
+    <string name="network_missing">Réseau introuvable : lancez tools/import_tunismapper.py pour générer assets/network.json.</string>
+</resources>

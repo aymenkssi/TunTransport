@@ -27,6 +27,15 @@ travaille ensuite en **une dimension** : l'abscisse curviligne le long du tracé
 (« le bus est à 3 420 m du terminus »). C'est ce qui rend le regroupement et
 les ETA simples et robustes.
 
+### Données utilisées
+Les lignes, arrêts, horaires et tracés sont importés de
+[tunismapper.com](https://www.tunismapper.com/lignes.php) par
+`tools/import_tunismapper.py` (228 lignes : métro, RFR, train, bus). Seules
+18 lignes y ont un tracé relevé ; pour les autres (dont tout le métro et les
+bus), le tracé est la succession des arrêts, d'où une tolérance élargie
+(150 m au lieu de 40 m). Améliorer ces tracés est prioritaire : les sources
+ci-dessous, ou les traces des premiers trajets partagés.
+
 ### Où trouver les tracés (contexte tunisien)
 - **OpenStreetMap** : relations `route=bus`, `route=tram` (métro léger de Tunis),
   `route=train` (TGM, banlieue Sud) — couverture partielle, à vérifier ligne par ligne.

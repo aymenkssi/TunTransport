@@ -4,3 +4,7 @@ __pycache__/
 build/
 local.properties
 .idea/
+tools/.cache/
+# Réseau importé de tunismapper.com : régénérable, non versionné (voir README)
+android/app/src/main/assets/network.json
+.kotlin/
