@@ -1,5 +1,7 @@
 # Déployer le backend TunTransport sur un VPS
 
+> **Installation sur le VPS de Neon Strike : suivez [INSTALLATION.md](INSTALLATION.md)**, le guide pas à pas complet. Ce fichier-ci décrit le dossier `deploy/` en général.
+
 Ce dossier lance trois conteneurs avec Docker Compose :
 
 | Service | Rôle | Exposé sur Internet |
