@@ -28,6 +28,9 @@ Collaborative Android app where passengers share the live position of the public
   30 backend tests.
 - [x] Journey planner (time-dependent Dijkstra, walking + transfers, live waits from shared vehicles,
   official timetables for trains/RFR, estimated waits for metro/bus whose source timetable is hourly).
+- [x] Anti-fraud (backend/trust.py): stationary (<100 m in 4 min, off terminus), walking (3–7 km/h avg, no
+  peak >10 km/h over 3 min), mocked GPS (trip ended), hidden reputation (confirmed vs solo/rejected/
+  reported/mocked; untrusted-only vehicles hidden), "vehicle does not exist" reports (2, or 3 if confirmed).
 - [x] App: live map home, journey planner tab, lines list (search, modes, live badges), line screen (map, direction, live vehicles, ETA,
   timetable), trip sharing with auto-stop, about/privacy/delete data.
 

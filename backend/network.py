@@ -91,6 +91,7 @@ class Fix(BaseModel):
     lat: float = Field(..., ge=-90, le=90)
     lon: float = Field(..., ge=-180, le=180)
     accuracy: float = Field(default=10.0, ge=0, le=10_000)
+    mocked: bool = False  # position simulée signalée par le système (Android)
 
     def to_fix(self) -> GpsFix:
         return GpsFix(self.t, self.lat, self.lon, self.accuracy)

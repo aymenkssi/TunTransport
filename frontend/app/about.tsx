@@ -48,7 +48,10 @@ export default function AboutScreen() {
         • Les autres voient un véhicule, jamais une personne.{"\n"}
         • Vos coordonnées GPS ne sont pas enregistrées : le serveur ne garde que la position du véhicule le long de la
         ligne, effacée 5 minutes après la dernière mise à jour.{"\n"}
-        • Aucun compte, aucun nom, aucun e-mail : un identifiant anonyme est créé sur votre téléphone.
+        • Aucun compte, aucun nom, aucun e-mail : un identifiant anonyme est créé sur votre téléphone.{"\n"}
+        • Contre les fausses déclarations, le serveur vérifie que le véhicule avance vraiment sur la ligne (pas à
+        pied, pas immobile, pas de position simulée) et tient compte des confirmations et des signalements des
+        autres voyageurs.
       </Text>
       {SITE ? (
         <Pressable onPress={() => Linking.openURL(`${SITE}/privacy`)}>

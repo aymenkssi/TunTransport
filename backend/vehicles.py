@@ -22,6 +22,7 @@ class Contribution:
     along_m: float
     speed_mps: float
     t: float
+    trusted: bool = True  # auteur de confiance (voir trust.py)
 
 
 @dataclass
@@ -33,6 +34,7 @@ class Vehicle:
     last_update: float
     contributors: tuple
     spread_m: float
+    trusted: int = 0  # passagers de confiance parmi les contributeurs
 
     def estimated_along(self, now):
         """Position extrapolée à l'instant `now` (bornée pour ne pas inventer)."""
@@ -78,6 +80,7 @@ def _build(line_id, direction, items):
         last_update=last,
         contributors=tuple(sorted({c.trip_id for c in items})),
         spread_m=max(positions) - min(positions),
+        trusted=sum(1 for c in items if c.trusted),
     )
 
 

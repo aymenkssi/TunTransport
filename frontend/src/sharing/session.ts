@@ -158,6 +158,7 @@ async function process(locations: Location.LocationObject[]): Promise<void> {
     lat: l.coords.latitude,
     lon: l.coords.longitude,
     accuracy: l.coords.accuracy ?? 50,
+    mocked: l.mocked ?? false,
   }));
   const all = [...current.fixes, ...incoming].sort((a, b) => a.t - b.t);
   const latest = all.length ? all[all.length - 1].t : 0;

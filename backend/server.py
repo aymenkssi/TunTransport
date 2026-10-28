@@ -14,6 +14,7 @@ import network
 import places
 import routing
 import trips
+import trust
 from auth import current_user, hash_token
 from database import client, db
 
@@ -58,6 +59,7 @@ app.include_router(network.router)
 app.include_router(trips.router)
 app.include_router(routing.router)
 app.include_router(places.router)
+app.include_router(trust.router)
 app.include_router(admin.admin)
 app.include_router(admin.admin_page)
 
@@ -75,6 +77,7 @@ async def startup():
     await db.users.create_index("id", unique=True)
     await db.users.create_index("token_hash", unique=True)
     await trips.setup()
+    await trust.setup()
 
 
 @app.on_event("shutdown")

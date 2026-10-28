@@ -8,6 +8,7 @@ import { getLine, getVehicles, Line, Vehicle } from "@/src/api/network";
 import { LineBadge } from "@/src/components/LineBadge";
 import { LineMap } from "@/src/components/LineMap";
 import { MapData } from "@/src/components/map-html";
+import { confirmReport } from "@/src/components/report";
 import { startSharing, stopSharing } from "@/src/sharing/session";
 import { useShare } from "@/src/sharing/use-share";
 import { Colors, modeColors, radius, spacing, type, useColors } from "@/src/theme";
@@ -171,9 +172,14 @@ export default function LineScreen() {
           shown.map((v, i) => (
             <View key={i} style={styles.vehicle}>
               <View style={[styles.statusDot, { backgroundColor: v.status === "fiable" ? colors.ok : v.status === "probable" ? colors.info : colors.onSurfaceSecondary }]} />
-              <Text style={styles.text}>
+              <Text style={[styles.text, styles.vehicleText]}>
                 {v.status === "fiable" ? "Fiable" : v.status === "probable" ? "Probable" : "Obsolète"} · {v.confirmations} passager{v.confirmations > 1 ? "s" : ""} · {formatAge(v.age_s)}
               </Text>
+              {!sharingHere && (
+                <Pressable onPress={() => confirmReport(line.id, v, refreshVehicles)} hitSlop={8} accessibilityLabel="Signaler ce véhicule">
+                  <Ionicons name="flag-outline" size={16} color={colors.onSurfaceSecondary} />
+                </Pressable>
+              )}
             </View>
           ))
         )}
@@ -258,6 +264,7 @@ const makeStyles = (c: Colors) =>
     stopButtonText: { color: c.error, fontWeight: "700", fontSize: type.base },
     vehicle: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
     statusDot: { width: 10, height: 10, borderRadius: 5 },
+    vehicleText: { flex: 1 },
     etaCard: { backgroundColor: c.infoSoft, borderRadius: radius.md, padding: spacing.md - 4, gap: 4 },
     stop: { flexDirection: "row", alignItems: "center", gap: spacing.sm + 4, paddingRight: spacing.md, minHeight: 44 },
     stopSelected: { backgroundColor: c.surfaceSecondary },

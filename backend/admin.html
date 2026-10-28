@@ -75,10 +75,10 @@
 
     <div data-panel="live">
       <h2>Véhicules en direct</h2>
-      <p class="hint">Véhicules signalés par les passagers, actualisés toutes les 10 secondes. Un véhicule « fiable » est confirmé par plusieurs passagers ; il disparaît 5 minutes après la dernière position.</p>
+      <p class="hint">Véhicules signalés par les passagers, actualisés toutes les 10 secondes. Un véhicule « fiable » est confirmé par plusieurs passagers ; il disparaît 5 minutes après la dernière position. « Masqué » : partagé uniquement par des utilisateurs à faible réputation, invisible des voyageurs tant qu'un utilisateur de confiance ne le confirme pas.</p>
       <section class="panel table-wrap">
         <table>
-          <thead><tr><th>Ligne</th><th>Vers</th><th class="n">Position</th><th class="n">Vitesse</th><th class="n">Passagers</th><th class="n">Âge</th><th>Statut</th></tr></thead>
+          <thead><tr><th>Ligne</th><th>Vers</th><th class="n">Position</th><th class="n">Vitesse</th><th class="n">Passagers</th><th class="n">Âge</th><th>Statut</th><th>Carte</th></tr></thead>
           <tbody id="live-rows"></tbody>
         </table>
       </section>
@@ -87,6 +87,9 @@
     <div data-panel="stats" hidden>
       <h2>Partage</h2>
       <div class="kpis" id="kpis"></div>
+      <h2>Fausses déclarations</h2>
+      <p class="hint">Trajets refusés : hors de la ligne, mauvais sens, immobiles hors terminus, marche à pied ou position simulée. Un véhicule signalé « n'existe pas » par 2 voyageurs (3 s'il est confirmé par plusieurs passagers) est masqué et ses auteurs perdent en réputation.</p>
+      <div class="kpis" id="trust-kpis"></div>
       <h2>Trajets par jour <span class="muted">(14 jours)</span></h2>
       <section class="panel"><div class="bars" id="bars"></div><div class="axis" id="axis"></div></section>
       <h2>Lignes les plus partagées <span class="muted">(7 jours, trajets validés)</span></h2>
@@ -129,8 +132,9 @@ async function loadLive() {
   $("live-rows").innerHTML = rows.length ? rows.map((r) => `<tr>
       <td>${esc(r.label)}</td><td>${esc(r.headsign)}</td><td class="n">${fmtKm(r.along_m)}</td>
       <td class="n">${r.speed_kmh} km/h</td><td class="n">${r.confirmations}</td><td class="n">${fmtAge(r.age_s)}</td>
-      <td><span class="pill ${esc(r.status)}">${esc(r.status)}</span></td></tr>`).join("")
-    : `<tr><td colspan="7" class="muted">Aucun véhicule partagé en ce moment.</td></tr>`;
+      <td><span class="pill ${esc(r.status)}">${esc(r.status)}</span></td>
+      <td>${r.visible ? "visible" : '<span class="pill obsolète">masqué</span>'}</td></tr>`).join("")
+    : `<tr><td colspan="8" class="muted">Aucun véhicule partagé en ce moment.</td></tr>`;
 }
 
 async function loadStats() {
@@ -138,6 +142,10 @@ async function loadStats() {
   $("kpis").innerHTML = [
     kpi(s.users, "utilisateurs"), kpi(s.active_trips, "trajets en cours"), kpi(s.trips_today, "trajets aujourd'hui"),
     kpi(s.trips_7d, "trajets sur 7 jours"), kpi(s.validated_7d, "trajets validés (7 j)"), kpi(s.contributors_7d, "contributeurs (7 j)"),
+  ].join("");
+  $("trust-kpis").innerHTML = [
+    kpi(s.rejected_trips_7d, "trajets refusés (7 j)"), kpi(s.reports_7d, "signalements (7 j)"),
+    kpi(s.hidden_trips_7d, "trajets masqués après signalement (7 j)"), kpi(s.low_reputation_users, "utilisateurs à faible réputation"),
   ].join("");
   const max = Math.max(1, ...s.per_day.map((d) => d.trips));
   $("bars").innerHTML = s.per_day.map((d) => `<div style="height:${(d.trips / max) * 100}%" title="${esc(d.day)} : ${d.trips}"></div>`).join("");

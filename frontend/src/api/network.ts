@@ -45,7 +45,8 @@ export type LiveVehicle = Vehicle & {
   color: string | null;
 };
 
-export type Fix = { t: number; lat: number; lon: number; accuracy: number };
+// `mocked`: Android says the position comes from a fake-GPS app; the server then stops the trip.
+export type Fix = { t: number; lat: number; lon: number; accuracy: number; mocked: boolean };
 
 export type PositionResult = {
   status: "checking" | "on_route" | "rejected";
@@ -71,6 +72,13 @@ export const startTrip = (lineId: string, direction: number) =>
 
 export const postPositions = (tripId: string, fixes: Fix[]) =>
   authed<PositionResult>(`/trips/${tripId}/positions`, { method: "POST", body: JSON.stringify({ fixes }) });
+
+/** "This vehicle does not exist": several reports hide it and lower its contributors' reputation. */
+export const reportVehicle = (lineId: string, v: Pick<Vehicle, "direction" | "lat" | "lon">) =>
+  authed<{ ok: boolean }>("/vehicles/report", {
+    method: "POST",
+    body: JSON.stringify({ line_id: lineId, direction: v.direction, lat: v.lat, lon: v.lon }),
+  });
 
 export const endTrip = (tripId: string) => authed<{ ok: boolean }>(`/trips/${tripId}/end`, { method: "POST" });
 

@@ -429,7 +429,8 @@ async def plan(payload: PlanRequest):
     origin = _resolve(g, payload.origin, "Départ")
     dest = _resolve(g, payload.destination, "Arrivée")
     now = trips.now()
-    live = [v for v in vh.cluster_vehicles(await trips._fresh_contributions(), now) if vh.reliability(v, now)[1] != "expiré"]
+    live = [v for v in trips.visible(vh.cluster_vehicles(await trips._fresh_contributions(), now))
+            if vh.reliability(v, now)[1] != "expiré"]
 
     results: List[Itinerary] = []
     seen = set()

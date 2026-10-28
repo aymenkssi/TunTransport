@@ -120,11 +120,12 @@ docker compose exec -T mongo mongorestore --gzip --archive=/backups/tuntransport
 | `GET /api/lines` · `GET /api/lines/{id}` | Liste des lignes ; ligne complète (arrêts, tracé et arrêts de chaque sens, horaires). |
 | `POST /api/lines/suggest` | Lignes et sens compatibles avec une trace GPS. |
 | `POST /api/trips` | Le passager déclare sa ligne et son sens. Un seul trajet actif par utilisateur, 40 par jour au plus. |
-| `POST /api/trips/{id}/positions` | Dernières positions GPS (≈ 60 s). Le serveur vérifie la trace (≥ 80 % des points près du tracé, bon sens, vitesse plausible) et ne publie que la position le long de la ligne. Coordonnées brutes jamais enregistrées. |
+| `POST /api/trips/{id}/positions` | Dernières positions GPS (≈ 60 s). Le serveur vérifie la trace (≥ 80 % des points près du tracé, bon sens, vitesse plausible) et ne publie que la position le long de la ligne. Coordonnées brutes jamais enregistrées. Refuse aussi un véhicule immobile 4 min hors terminus, un déplacement à pied (3 à 7 km/h sans pointe au-delà de 10 km/h pendant 3 min) et une position simulée (fin du trajet). Les véhicules partagés seulement par des utilisateurs à faible réputation ne sont pas affichés. |
 | `POST /api/trips/{id}/end` | Fin du trajet : la position disparaît immédiatement. Fin automatique après 2 h. |
 | `GET /api/lines/{id}/vehicles?stop_id=` | Véhicules de la ligne : passagers regroupés par véhicule, position, nombre de passagers, âge, fiabilité (fiable / probable / obsolète), temps d'arrivée à l'arrêt demandé. |
 | `GET /api/vehicles/live` | Tous les véhicules en direct du réseau, avec la ligne, sa couleur et son numéro (carte d'accueil de l'app). |
 | `GET /api/live` | Nombre de véhicules en direct par ligne. |
+| `POST /api/vehicles/report` | « Ce véhicule n'existe pas » : 2 signalements de voyageurs de confiance (3 si le véhicule est confirmé par plusieurs passagers) le masquent et pénalisent la réputation de ses auteurs. 10 par jour et par utilisateur. |
 | `GET /api/stops/search?q=` | Arrêts dont le nom contient `q`, avec leurs lignes. |
 | `GET /api/places/search?q=` | Adresses et lieux en Tunisie (OpenStreetMap / Nominatim), d'abord ceux proches d'un arrêt. Une requête par seconde au plus vers Nominatim, résultats en cache 7 jours ; l'app ne cherche qu'à la validation (Nominatim interdit l'auto-complétion). |
 | `POST /api/routes/plan` | Itinéraire d'un arrêt ou d'un point à un autre, au départ de maintenant : marche, correspondances (400 m max), jusqu'à 3 propositions. Attente « en direct » si un passager partage un véhicule qui approche, sinon horaire officiel (trains, RFR) ou estimation (métro, bus). |

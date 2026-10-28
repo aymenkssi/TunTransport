@@ -17,6 +17,7 @@ from fastapi.responses import HTMLResponse
 
 import network
 import trips
+import trust
 import vehicles as vh
 from database import db
 
@@ -52,7 +53,8 @@ def _line_label(line_id: str) -> str:
 async def stats():
     t = trips.now()
     since = t - STATS_DAYS * 86400
-    recent = await db.trips.find({"started_ts": {"$gte": since}}, {"_id": 0, "user_id": 1, "line_id": 1, "started_ts": 1, "on_route_count": 1}).to_list(200_000)
+    recent = await db.trips.find({"started_ts": {"$gte": since}}, {"_id": 0, "user_id": 1, "line_id": 1, "started_ts": 1,
+                                                                   "on_route_count": 1, "rejected_count": 1}).to_list(200_000)
     today = datetime.fromtimestamp(t, timezone.utc).date()
     days = [(today - timedelta(days=i)).isoformat() for i in range(STATS_DAYS - 1, -1, -1)]
     per_day = Counter(datetime.fromtimestamp(r["started_ts"], timezone.utc).date().isoformat() for r in recent)
@@ -68,6 +70,11 @@ async def stats():
         "contributors_7d": len({r["user_id"] for r in validated}),
         "per_day": [{"day": d, "trips": per_day.get(d, 0)} for d in days],
         "top_lines": [{"line_id": lid, "label": _line_label(lid), "trips": n} for lid, n in top],
+        "reports_7d": await db.reports.count_documents({"t": {"$gte": t - 7 * 86400}}),
+        "hidden_trips_7d": await db.trips.count_documents({"reported": True, "started_ts": {"$gte": t - 7 * 86400}}),
+        "rejected_trips_7d": sum(1 for r in week if r.get("rejected_count", 0) > r.get("on_route_count", 0)),
+        "low_reputation_users": sum([1 async for u in db.users.find(
+            {"$or": [{f"rep_{k}": {"$gt": 0}} for k in ("solo", "rejected", "reported", "mocked")]}) if not trust.is_trusted(u)]),
     }
 
 
@@ -88,6 +95,7 @@ async def live():
             "age_s": round(t - vehicle.last_update),
             "reliability": round(score, 2),
             "status": status,
+            "visible": vehicle.trusted > 0,  # masqué : aucun passager de confiance
         })
     rows.sort(key=lambda r: (r["label"], r["along_m"]))
     return rows

@@ -10,6 +10,7 @@ import { getLiveVehicles, LiveVehicle, Mode } from "@/src/api/network";
 import { LineBadge } from "@/src/components/LineBadge";
 import { LineMap } from "@/src/components/LineMap";
 import { MapData } from "@/src/components/map-html";
+import { confirmReport } from "@/src/components/report";
 import { ShareBanner } from "@/src/components/ShareBanner";
 import { Colors, modeColors, radius, spacing, type, useColors } from "@/src/theme";
 import { formatAge } from "@/src/utils/format";
@@ -165,6 +166,13 @@ export default function LiveMapScreen() {
             <Text style={styles.cardButtonText}>Voir la ligne et les arrivées</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.onBrand} />
           </Pressable>
+          <Pressable
+            style={styles.report}
+            onPress={() => confirmReport(current.line_id, current, () => (setSelected(null), refresh()))}
+          >
+            <Ionicons name="flag-outline" size={14} color={colors.onSurfaceSecondary} />
+            <Text style={styles.reportText}>Ce véhicule n’existe pas</Text>
+          </Pressable>
         </View>
       ) : vehicles !== null && count === 0 ? (
         <View style={styles.card}>
@@ -217,4 +225,6 @@ const makeStyles = (c: Colors) =>
       backgroundColor: c.brand, borderRadius: radius.md, paddingVertical: spacing.sm + 4,
     },
     cardButtonText: { color: c.onBrand, fontWeight: "700", fontSize: type.base },
+    report: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingTop: 2 },
+    reportText: { color: c.onSurfaceSecondary, fontSize: type.sm },
   });

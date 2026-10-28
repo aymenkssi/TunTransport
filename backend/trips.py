@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 import network
+import trust
 import vehicles as vh
 from auth import current_user
 from database import db
@@ -103,14 +104,28 @@ async def _end(trip: dict, reason: str) -> None:
     await db.trips.update_one(
         {"id": trip["id"], "ended_at": None}, {"$set": {"ended_at": iso(now()), "end_reason": reason}}
     )
+    await trust.settle_trip(trip["id"])
 
 
 async def _fresh_contributions(line_id: Optional[str] = None) -> List[vh.Contribution]:
-    query: dict = {"t": {"$gte": now() - vh.EXPIRED_AGE_S}}
+    """Positions récentes, sans celles masquées après signalement."""
+    query: dict = {"t": {"$gte": now() - vh.EXPIRED_AGE_S}, "hidden": {"$ne": True}}
     if line_id:
         query["line_id"] = line_id
     docs = await db.contributions.find(query, {"_id": 0}).to_list(5000)
-    return [vh.Contribution(d["trip_id"], d["line_id"], d["direction"], d["along_m"], d["speed_mps"], d["t"]) for d in docs]
+    return [vh.Contribution(d["trip_id"], d["line_id"], d["direction"], d["along_m"], d["speed_mps"], d["t"],
+                            d.get("trusted", True)) for d in docs]
+
+
+def visible(vehicles: List[vh.Vehicle]) -> List[vh.Vehicle]:
+    """Un véhicule n'est montré que si au moins un de ses passagers est de confiance."""
+    return [v for v in vehicles if v.trusted > 0]
+
+
+async def _reject(trip: dict, reason: str) -> "PositionResult":
+    await db.contributions.delete_one({"trip_id": trip["id"]})
+    await db.trips.update_one({"id": trip["id"]}, {"$inc": {"rejected_count": 1}})
+    return PositionResult(status="rejected", reason=reason)
 
 
 # ------------------------ Routes ------------------------
@@ -134,6 +149,9 @@ async def start_trip(payload: TripStart, user: dict = Depends(current_user)):
         "ended_at": None,
         "last_position_ts": 0.0,
         "on_route_count": 0,
+        "rejected_count": 0,
+        "confirmed": False,
+        "track": [],
     }
     await db.trips.insert_one(trip)
     headsign = line.data["directions"][payload.direction]["headsign"]
@@ -148,16 +166,29 @@ async def post_positions(trip_id: str, trace: network.Trace, user: dict = Depend
         raise HTTPException(429, "Too many updates")
     await db.trips.update_one({"id": trip_id}, {"$set": {"last_position_ts": t}})
 
+    if any(f.mocked for f in trace.fixes):
+        # Faux GPS : le trajet s'arrête et la réputation de l'utilisateur chute.
+        await trust.penalize_mocked(user["id"])
+        await _end(trip, "mocked")
+        return PositionResult(status="rejected", reason=trust.REASONS["mocked"])
+
     line = network.current().line(trip["line_id"])
+    shape = line.shapes[trip["direction"]]
     fixes = [f.to_fix() for f in trace.fixes if abs(f.t - t) <= MAX_CLOCK_SKEW_S]
-    result = match_trace(fixes, line.shapes[trip["direction"]], line.max_offset_m)
+    result = match_trace(fixes, shape, line.max_offset_m)
 
     if not result.ok:
         # Plus rien n'est publié dès que la trace n'est plus validée.
-        await db.contributions.delete_one({"trip_id": trip_id})
         if result.reason == "too_short":
+            await db.contributions.delete_one({"trip_id": trip_id})
             return PositionResult(status="checking")
-        return PositionResult(status="rejected", reason=REASONS[result.reason])
+        return await _reject(trip, REASONS[result.reason])
+
+    track = trust.update_track(trip.get("track", []), t, result.along_m)
+    await db.trips.update_one({"id": trip_id}, {"$set": {"track": track}})
+    problem = trust.motion_problem(track, t, shape.length_m)
+    if problem:
+        return await _reject(trip, trust.REASONS[problem])
 
     await db.contributions.update_one(
         {"trip_id": trip_id},
@@ -169,10 +200,15 @@ async def post_positions(trip_id: str, trace: network.Trace, user: dict = Depend
             "speed_mps": result.speed_mps,
             "t": t,  # heure du serveur : l'horloge du téléphone peut être fausse
             "expires_at": datetime.fromtimestamp(t + vh.EXPIRED_AGE_S, timezone.utc),
+            "trusted": trust.is_trusted(user),
         }},
         upsert=True,
     )
     await db.trips.update_one({"id": trip_id}, {"$inc": {"on_route_count": 1}})
+    # Un autre passager est dans le même véhicule : les trajets se confirment mutuellement.
+    for vehicle in vh.cluster_vehicles(await _fresh_contributions(trip["line_id"]), t):
+        if trip_id in vehicle.contributors and len(vehicle.contributors) >= 2:
+            await db.trips.update_many({"id": {"$in": list(vehicle.contributors)}}, {"$set": {"confirmed": True}})
     return PositionResult(status="on_route", along_m=round(result.along_m), speed_mps=round(result.speed_mps, 1))
 
 
@@ -218,7 +254,7 @@ def _vehicle_out(line: "network.LoadedLine", vehicle: vh.Vehicle, t: float, stop
 async def line_vehicles(line_id: str, stop_id: Optional[str] = None):
     line = network.current().line(line_id)
     t = now()
-    out = [VehicleOut(**v) for vehicle in vh.cluster_vehicles(await _fresh_contributions(line_id), t)
+    out = [VehicleOut(**v) for vehicle in visible(vh.cluster_vehicles(await _fresh_contributions(line_id), t))
            if (v := _vehicle_out(line, vehicle, t, stop_id))]
     if stop_id:
         out.sort(key=lambda v: (v.eta_s is None, v.eta_s or 0))
@@ -231,7 +267,7 @@ async def network_vehicles():
     t = now()
     net = network.current()
     out = []
-    for vehicle in vh.cluster_vehicles(await _fresh_contributions(), t):
+    for vehicle in visible(vh.cluster_vehicles(await _fresh_contributions(), t)):
         line = net.lines.get(vehicle.line_id)
         v = _vehicle_out(line, vehicle, t) if line else None
         if v:
@@ -245,7 +281,7 @@ async def live_counts():
     """Nombre de véhicules visibles par ligne, pour les badges de la liste des lignes."""
     t = now()
     counts: Dict[str, int] = {}
-    for vehicle in vh.cluster_vehicles(await _fresh_contributions(), t):
+    for vehicle in visible(vh.cluster_vehicles(await _fresh_contributions(), t)):
         if vh.reliability(vehicle, t)[1] != "expiré":
             counts[vehicle.line_id] = counts.get(vehicle.line_id, 0) + 1
     return counts
