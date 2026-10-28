@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Importe les lignes (métro, RFR, train, bus) publiées sur tunismapper.com
-et produit network.json, le réseau embarqué dans l'application.
+et produit network.json, le réseau servi par l'API (backend/data/network.json).
 
 Source : les pages publiques ligne_details.php (autorisées par robots.txt),
 listées dans sitemap-lignes.xml. L'API /backend/ est exclue par robots.txt et
@@ -21,8 +21,8 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "prototype"))
-from tuntransport_core.geo import EARTH_RADIUS_M, Shape, haversine_m  # noqa: E402
+sys.path.insert(0, str(ROOT / "backend"))
+from geo import EARTH_RADIUS_M, Shape, haversine_m  # noqa: E402
 
 BASE = "https://www.tunismapper.com"
 USER_AGENT = "TunTransport-importer/0.1 (+https://github.com/aymenkssi/TunTransport)"
@@ -234,7 +234,7 @@ def parse_line(route_id, page):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--out", type=Path, default=ROOT / "android/app/src/main/assets/network.json")
+    parser.add_argument("--out", type=Path, default=ROOT / "backend/data/network.json")
     parser.add_argument("--cache", type=Path, default=ROOT / "tools/.cache")
     args = parser.parse_args()
     args.cache.mkdir(parents=True, exist_ok=True)

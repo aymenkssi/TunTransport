@@ -45,17 +45,18 @@ ci-dessous, ou les traces des premiers trajets partagés.
 - Les **louages** n'ont pas de tracé fixe ni d'horaires : à traiter plus tard,
   comme des trajets origine → destination plutôt que des lignes.
 
-## 3. Algorithmes (prototypés dans `prototype/`)
+## 3. Algorithmes (dans `backend/`, exécutés par le serveur)
 
-### 3.1 Validation ligne / sens — `line_matching.py`
+### 3.1 Validation ligne / sens — `matching.py`
 Sur les dernières ~60 s de points :
 - on écarte les points dont la précision GPS est > 50 m ;
 - on projette chaque point sur le tracé → (abscisse, écart latéral) ;
-- **≥ 80 % des points à moins de 40 m du tracé** (ou de la précision annoncée) ;
+- **≥ 80 % des points à moins de 40 m du tracé** (150 m quand le tracé ne relie que
+  les arrêts ; ou la précision annoncée si elle est plus large) ;
 - **l'abscisse ne recule pas** de plus de 30 m → sinon, mauvais sens ;
 - vitesse ≤ 120 km/h → sinon, données aberrantes.
 
-`suggest_lines()` utilise le même test sur toutes les lignes proches pour
+`POST /api/lines/suggest` utilise le même test sur toutes les lignes proches pour
 **proposer automatiquement** la ligne : le passager n'a plus qu'à confirmer
 (moins de friction, moins d'erreurs de saisie).
 
@@ -95,43 +96,44 @@ vitesse bornée entre 2 et 20 m/s (un bus à l'arrêt n'a pas un ETA infini ;
 vitesse par défaut ≈ 18 km/h). Étape suivante : apprendre la vitesse
 moyenne **par tronçon et par heure** à partir des trajets passés.
 
-## 4. Architecture proposée
+## 4. Architecture (même organisation que Neon Strike)
 
 ```
-App Android (Kotlin, Jetpack Compose)
- ├─ Carte : MapLibre + tuiles OpenStreetMap (évite le coût Google Maps)
- ├─ Partage : Foreground Service + FusedLocationProvider (5–10 s)
- └─ Temps réel : WebSocket (abonnement aux lignes visibles à l'écran)
-        │
-Backend (Kotlin/Ktor ou Python/FastAPI)
- ├─ Ingestion des positions → validation (§3.1)
- ├─ Boucle toutes les 2–5 s : regroupement + fiabilité (§3.2, §3.3)
- ├─ Diffusion des véhicules par ligne (WebSocket / Redis Pub/Sub)
- ├─ Redis : état « chaud » avec TTL (positions éphémères)
- └─ PostgreSQL + PostGIS : lignes, tracés, arrêts, statistiques anonymisées
+frontend/  Application Expo (SDK 54, React Native 0.81, expo-router, TypeScript)
+ ├─ Carte : MapLibre GL JS dans une WebView + tuiles OpenFreeMap (OpenStreetMap, sans clé)
+ ├─ Partage : expo-location + expo-task-manager, service au premier plan (5 s)
+ └─ Rafraîchissement : véhicules toutes les 10 s, compteurs « en direct » toutes les 30 s
+        │ HTTPS
+backend/   API FastAPI + MongoDB (motor)
+ ├─ network.py   lignes chargées en mémoire depuis data/network.json
+ ├─ trips.py     trajets, validation des traces (§3.1), véhicules (§3.2 à §3.4)
+ ├─ admin.py     page /admin : en direct, statistiques, réseau
+ └─ contributions : position le long du tracé, index TTL (5 min)
+deploy/    Docker Compose : api + mongo + Caddy (ou Traefik existant), site, sauvegardes
+tools/     import des lignes depuis tunismapper.com
 ```
 
-Côté Android, points d'attention :
-- **Foreground Service** avec notification permanente « Vous partagez la
-  position du bus 32 — Arrêter » (obligatoire sur Android 10+, et rassurant) ;
-- permission `ACCESS_FINE_LOCATION` uniquement « pendant l'utilisation » :
-  le partage est toujours lancé explicitement, pas besoin de la localisation
-  en arrière-plan permanente ;
-- **arrêt automatique** : trace qui quitte le tracé pendant > 2 min, vitesse de
-  marche prolongée, ou durée maximale (ex. 2 h) ;
-- batterie : intervalle adaptatif (plus long quand le véhicule est à l'arrêt).
+Points d'attention côté téléphone :
+- **service au premier plan** avec notification permanente pendant le partage
+  (obligatoire sur Android, et rassurant) ;
+- permission de localisation **pendant l'utilisation** seulement : le partage
+  est lancé depuis l'application, pas besoin de `ACCESS_BACKGROUND_LOCATION` ;
+- **arrêt automatique** : hors de la ligne pendant 2 min, ou après 2 h ;
+- évolution : intervalle adaptatif (plus long quand le véhicule est à l'arrêt)
+  pour la batterie, et WebSocket au lieu du rafraîchissement périodique.
 
 ## 5. Confidentialité (intégrée dès la conception)
 - Partage **volontaire**, démarré et arrêté en un geste.
 - Les observateurs voient **un véhicule**, jamais un utilisateur : pas de
   pseudonyme, pas de nombre exact de passagers (« confirmé par plusieurs »).
-- Positions brutes conservées **en mémoire avec TTL** (quelques minutes), puis
-  supprimées ; on ne garde durablement que des agrégats anonymes (vitesses par
-  tronçon).
+- Coordonnées GPS **jamais enregistrées** : le serveur les utilise pour la
+  validation puis ne garde que la position le long du tracé, avec expiration
+  automatique (index TTL, 5 min) ; elle est effacée dès l'arrêt du partage.
 - On n'envoie que les points **sur le tracé** ; le début et la fin du trajet
   (domicile, travail) ne sont jamais diffusés : la diffusion démarre après
   validation (§3.1) et s'arrête dès que le passager quitte la ligne.
-- Identifiant de session aléatoire par trajet, non lié au compte côté diffusion.
+- Utilisateur anonyme (aucun nom ni e-mail), identifiant aléatoire par trajet
+  côté diffusion, et suppression de toutes ses données depuis l'application.
 - Conformité : loi organique tunisienne n° 2004-63 (INPDP) et RGPD si
   ouverture à l'Europe.
 

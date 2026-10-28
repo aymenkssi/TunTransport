@@ -1,10 +1,9 @@
 __pycache__/
 *.pyc
-.gradle/
-build/
-local.properties
-.idea/
-tools/.cache/
-# Réseau importé de tunismapper.com : régénérable, non versionné (voir README)
-android/app/src/main/assets/network.json
+.venv/
+.env
 .kotlin/
+
+# Réseau importé de tunismapper.com : régénérable, non versionné (voir README)
+backend/data/
+tools/.cache/

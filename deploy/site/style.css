@@ -1,0 +1,15 @@
+:root { --bg: #ffffff; --text: #111827; --muted: #4b5563; --brand: #e70013; --card: #f3f4f6; color-scheme: light dark; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0f1115; --text: #f3f4f6; --muted: #9ca3af; --brand: #ff3b47; --card: #1a1d24; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 0 16px; }
+main { max-width: 720px; margin: 0 auto; padding: 40px 0 64px; }
+a { color: var(--brand); }
+.brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; text-decoration: none; color: var(--text); }
+.brand img { width: 40px; height: 40px; border-radius: 10px; }
+h1 { font-size: clamp(28px, 6vw, 40px); line-height: 1.15; margin: 32px 0 12px; }
+h2 { font-size: 20px; margin: 28px 0 8px; }
+.lead { font-size: 19px; color: var(--muted); }
+.card { background: var(--card); border-radius: 14px; padding: 16px 20px; margin: 24px 0; }
+.muted { color: var(--muted); }
+ul { padding-left: 20px; }
+footer { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 48px; color: var(--muted); font-size: 14px; }

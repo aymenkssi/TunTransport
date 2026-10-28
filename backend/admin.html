@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>TunTransport Admin</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1f232c; --line: #2a303b;
+    --text: #f3f4f6; --muted: #9ca3af; --brand: #ff3b47; --accent: #38bdf8;
+    --ok: #34d399; --warn: #fbbf24; --red: #f87171;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 0 16px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 28px 0 64px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 22px; margin: 0; }
+  h1 span { color: var(--brand); }
+  h2 { font-size: 17px; margin: 32px 0 6px; color: var(--accent); }
+  p.hint { color: var(--muted); margin: 0 0 14px; max-width: 75ch; font-size: 14px; }
+  section.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; }
+  th, td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  input { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; width: 100%; }
+  input:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button { font: inherit; font-weight: 600; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); padding: 7px 12px; cursor: pointer; }
+  button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .status { min-height: 22px; font-size: 14px; margin-top: 10px; }
+  .ok { color: var(--ok); } .err { color: var(--red); } .muted { color: var(--muted); }
+  .pill { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 9px; }
+  .pill.fiable { background: rgba(52,211,153,.15); color: var(--ok); }
+  .pill.probable { background: rgba(56,189,248,.15); color: var(--accent); }
+  .pill.obsolète { background: rgba(251,191,36,.15); color: var(--warn); }
+  #login { max-width: 420px; margin: 12vh auto 0; }
+  nav.tabs { display: flex; gap: 8px; margin-top: 20px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  nav.tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--muted); padding: 8px 4px; margin-right: 12px; }
+  nav.tabs button[aria-selected=true] { color: var(--text); border-bottom-color: var(--brand); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .kpi .v { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .kpi .l { color: var(--muted); font-size: 13px; }
+  .bars { display: flex; align-items: flex-end; gap: 4px; height: 120px; }
+  .bars div { flex: 1; background: var(--brand); border-radius: 4px 4px 0 0; min-height: 2px; position: relative; }
+  .axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 4px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <section id="login" class="panel">
+    <h1>Tun<span>Transport</span> Admin</h1>
+    <p class="hint">Saisissez le jeton d'administration du serveur.</p>
+    <form id="login-form">
+      <input id="token" type="password" autocomplete="current-password" placeholder="Jeton" required>
+      <div class="status" id="login-status"></div>
+      <button class="primary" type="submit">Se connecter</button>
+    </form>
+  </section>
+
+  <div id="app" hidden>
+    <header>
+      <h1>Tun<span>Transport</span> Admin</h1>
+      <button id="logout">Se déconnecter</button>
+    </header>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="live" aria-selected="true">En direct</button>
+      <button role="tab" data-tab="stats" aria-selected="false">Statistiques</button>
+      <button role="tab" data-tab="network" aria-selected="false">Réseau</button>
+    </nav>
+
+    <div data-panel="live">
+      <h2>Véhicules en direct</h2>
+      <p class="hint">Véhicules signalés par les passagers, actualisés toutes les 10 secondes. Un véhicule « fiable » est confirmé par plusieurs passagers ; il disparaît 5 minutes après la dernière position.</p>
+      <section class="panel table-wrap">
+        <table>
+          <thead><tr><th>Ligne</th><th>Vers</th><th class="n">Position</th><th class="n">Vitesse</th><th class="n">Passagers</th><th class="n">Âge</th><th>Statut</th></tr></thead>
+          <tbody id="live-rows"></tbody>
+        </table>
+      </section>
+    </div>
+
+    <div data-panel="stats" hidden>
+      <h2>Partage</h2>
+      <div class="kpis" id="kpis"></div>
+      <h2>Trajets par jour <span class="muted">(14 jours)</span></h2>
+      <section class="panel"><div class="bars" id="bars"></div><div class="axis" id="axis"></div></section>
+      <h2>Lignes les plus partagées <span class="muted">(7 jours, trajets validés)</span></h2>
+      <section class="panel table-wrap">
+        <table><thead><tr><th>Ligne</th><th class="n">Trajets</th></tr></thead><tbody id="top-rows"></tbody></table>
+      </section>
+    </div>
+
+    <div data-panel="network" hidden>
+      <h2>Réseau</h2>
+      <p class="hint">Lignes, arrêts, tracés et horaires importés par <code>tools/import_tunismapper.py</code>. Après un nouvel import sur le serveur, rechargez-les ici sans redémarrer l'API.</p>
+      <div class="kpis" id="net-kpis"></div>
+      <p><button class="primary" id="reload">Recharger le réseau</button></p>
+      <div class="status" id="net-status"></div>
+    </div>
+  </div>
+</main>
+<script>
+const KEY = "tt_admin_token";
+let token = sessionStorage.getItem(KEY) || "";
+let liveTimer = null;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtKm = (m) => (m / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + " km";
+const fmtAge = (s) => (s < 60 ? `${s} s` : `${Math.round(s / 60)} min`);
+
+async function call(path, init = {}) {
+  const res = await fetch(`/api/admin${path}`, { ...init, headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) { logout(); throw new Error("Jeton invalide"); }
+  if (!res.ok) throw new Error(`Erreur ${res.status}`);
+  return res.json();
+}
+
+function kpi(value, label) {
+  return `<div class="kpi"><div class="v">${esc(value)}</div><div class="l">${esc(label)}</div></div>`;
+}
+
+async function loadLive() {
+  const rows = await call("/live");
+  $("live-rows").innerHTML = rows.length ? rows.map((r) => `<tr>
+      <td>${esc(r.label)}</td><td>${esc(r.headsign)}</td><td class="n">${fmtKm(r.along_m)}</td>
+      <td class="n">${r.speed_kmh} km/h</td><td class="n">${r.confirmations}</td><td class="n">${fmtAge(r.age_s)}</td>
+      <td><span class="pill ${esc(r.status)}">${esc(r.status)}</span></td></tr>`).join("")
+    : `<tr><td colspan="7" class="muted">Aucun véhicule partagé en ce moment.</td></tr>`;
+}
+
+async function loadStats() {
+  const s = await call("/stats");
+  $("kpis").innerHTML = [
+    kpi(s.users, "utilisateurs"), kpi(s.active_trips, "trajets en cours"), kpi(s.trips_today, "trajets aujourd'hui"),
+    kpi(s.trips_7d, "trajets sur 7 jours"), kpi(s.validated_7d, "trajets validés (7 j)"), kpi(s.contributors_7d, "contributeurs (7 j)"),
+  ].join("");
+  const max = Math.max(1, ...s.per_day.map((d) => d.trips));
+  $("bars").innerHTML = s.per_day.map((d) => `<div style="height:${(d.trips / max) * 100}%" title="${esc(d.day)} : ${d.trips}"></div>`).join("");
+  $("axis").innerHTML = `<span>${esc(s.per_day[0].day)}</span><span>${esc(s.per_day[s.per_day.length - 1].day)}</span>`;
+  $("top-rows").innerHTML = s.top_lines.length ? s.top_lines.map((l) => `<tr><td>${esc(l.label)}</td><td class="n">${l.trips}</td></tr>`).join("")
+    : `<tr><td colspan="2" class="muted">Pas encore de trajet validé.</td></tr>`;
+}
+
+function renderNetwork(n) {
+  const modes = Object.entries(n.by_mode).map(([m, c]) => kpi(c, m)).join("");
+  $("net-kpis").innerHTML = kpi(n.lines, "lignes") + modes + kpi(n.stops_only_shapes, "tracés reconstruits") + kpi(n.generated || "—", "date d'import");
+}
+
+async function loadNetwork() { renderNetwork(await call("/network")); }
+
+function show(tab) {
+  document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+  document.querySelectorAll("[data-panel]").forEach((p) => (p.hidden = p.dataset.panel !== tab));
+  clearInterval(liveTimer);
+  const load = { live: loadLive, stats: loadStats, network: loadNetwork }[tab];
+  load().catch((e) => console.error(e));
+  if (tab === "live") liveTimer = setInterval(() => loadLive().catch(() => {}), 10000);
+}
+
+function logout() {
+  token = "";
+  sessionStorage.removeItem(KEY);
+  clearInterval(liveTimer);
+  $("app").hidden = true;
+  $("login").hidden = false;
+}
+
+$("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  token = $("token").value.trim();
+  try {
+    await call("/network");
+    sessionStorage.setItem(KEY, token);
+    start();
+  } catch (err) {
+    $("login-status").innerHTML = `<span class="err">${esc(err.message)}</span>`;
+  }
+});
+$("logout").addEventListener("click", logout);
+document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => show(b.dataset.tab)));
+$("reload").addEventListener("click", async () => {
+  $("net-status").textContent = "Rechargement…";
+  try {
+    renderNetwork(await call("/network/reload", { method: "POST" }));
+    $("net-status").innerHTML = `<span class="ok">Réseau rechargé.</span>`;
+  } catch (err) {
+    $("net-status").innerHTML = `<span class="err">${esc(err.message)}</span>`;
+  }
+});
+
+function start() {
+  $("login").hidden = true;
+  $("app").hidden = false;
+  show("live");
+}
+if (token) start();
+</script>
+</body>
+</html>
