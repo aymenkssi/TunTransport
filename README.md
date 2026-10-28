@@ -31,6 +31,7 @@ memory/     PRD et notes produit
 
 ```bash
 python3 tools/import_tunismapper.py      # ≈ 4 min la première fois → backend/data/network.json (228 lignes)
+python3 tools/import_places.py           # ≈ 1 min → backend/data/places.json (adresses du Grand Tunis, OpenStreetMap)
 ```
 
 ## 2. Backend

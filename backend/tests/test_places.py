@@ -43,6 +43,29 @@ def test_places_near_a_stop_come_first(api, monkeypatch):
     assert found[0]["stop_distance_m"] < 200
 
 
+def test_local_index_first_and_no_nominatim_while_typing(api, monkeypatch):
+    calls = fake_nominatim(monkeypatch)
+    found = api.get("/api/places/search", params={"q": "62 rue hyppocrate cite avicenne", "autocomplete": "true"}).json()
+    assert found[0]["name"] == "62 Rue Hippocrate" and found[0]["stop_distance_m"] > 0
+    assert api.get("/api/places/search", params={"q": "hippo", "autocomplete": "true"}).json()[0]["name"] == "Rue Hippocrate"
+    assert calls == []  # pendant la frappe : jamais Nominatim
+
+
+def test_nominatim_completes_few_local_results(api, monkeypatch):
+    calls = fake_nominatim(monkeypatch, [
+        {"lat": "36.7571", "lon": "10.1807", "name": "Rue Hippocrate", "display_name": "Rue Hippocrate, Ibn Sina 1", "type": "tertiary"},
+        {"lat": "36.80", "lon": "10.19", "name": "Clinique Hippocrate", "display_name": "Clinique Hippocrate, Tunis", "type": "clinic"},
+    ])
+    found = api.get("/api/places/search", params={"q": "rue hippocrate"}).json()
+    assert [h["name"] for h in found] == ["Rue Hippocrate", "Clinique Hippocrate"]  # doublon de Nominatim écarté
+    assert calls == ["rue hippocrate"]
+
+
+def test_nominatim_down_returns_local_results(api, monkeypatch):
+    fake_nominatim(monkeypatch, RuntimeError("down"))
+    assert api.get("/api/places/search", params={"q": "rue hippocrate"}).json()[0]["name"] == "Rue Hippocrate"
+
+
 def test_short_query_does_not_call_nominatim(api, monkeypatch):
     calls = fake_nominatim(monkeypatch)
     assert api.get("/api/places/search", params={"q": "ab"}).json() == []

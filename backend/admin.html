@@ -100,7 +100,7 @@
 
     <div data-panel="network" hidden>
       <h2>Réseau</h2>
-      <p class="hint">Lignes, arrêts, tracés et horaires importés par <code>tools/import_tunismapper.py</code>. Après un nouvel import sur le serveur, rechargez-les ici sans redémarrer l'API.</p>
+      <p class="hint">Lignes, arrêts, tracés et horaires importés par <code>tools/import_tunismapper.py</code> ; adresses et lieux du Grand Tunis par <code>tools/import_places.py</code> (OpenStreetMap). Après un nouvel import sur le serveur, rechargez-les ici sans redémarrer l'API.</p>
       <div class="kpis" id="net-kpis"></div>
       <p><button class="primary" id="reload">Recharger le réseau</button></p>
       <div class="status" id="net-status"></div>
@@ -156,7 +156,8 @@ async function loadStats() {
 
 function renderNetwork(n) {
   const modes = Object.entries(n.by_mode).map(([m, c]) => kpi(c, m)).join("");
-  $("net-kpis").innerHTML = kpi(n.lines, "lignes") + modes + kpi(n.stops_only_shapes, "tracés reconstruits") + kpi(n.generated || "—", "date d'import");
+  $("net-kpis").innerHTML = kpi(n.lines, "lignes") + modes + kpi(n.stops_only_shapes, "tracés reconstruits") + kpi(n.generated || "—", "date d'import")
+    + kpi(n.places, "adresses et lieux") + kpi(n.places_generated || "—", "import des adresses");
 }
 
 async function loadNetwork() { renderNetwork(await call("/network")); }

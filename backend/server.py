@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from starlette.middleware.cors import CORSMiddleware
 
 import admin
+import geocoder
 import network
 import places
 import routing
@@ -74,6 +75,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     network.load()
+    geocoder.load()
     await db.users.create_index("id", unique=True)
     await db.users.create_index("token_hash", unique=True)
     await trips.setup()

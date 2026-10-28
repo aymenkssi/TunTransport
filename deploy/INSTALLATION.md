@@ -93,8 +93,9 @@ docker compose config --services     # doit afficher : mongo, api, site (et pas 
 ```bash
 cd /opt/apps/tuntransport/deploy
 python3 ../tools/import_tunismapper.py --out data/network.json --cache data/.cache
+python3 ../tools/import_places.py --out data/places.json
 ```
-Environ 4 minutes. La fin doit afficher `228 lignes {'train': 29, 'rfr': 3, 'metro': 7, 'bus': 189}`.
+Environ 5 minutes. La première commande doit afficher `228 lignes {'train': 29, 'rfr': 3, 'metro': 7, 'bus': 189}`, la seconde plusieurs dizaines de milliers d'adresses et lieux (rues, quartiers, commerces… du Grand Tunis).
 
 ## Étape 5 — Lancer
 

@@ -26,5 +26,6 @@ def test_stats_and_live(api, clock, user):
 
 def test_network_info_and_reload(api):
     info = api.get("/api/admin/network", headers=ADMIN).json()
-    assert info == {"source": "test", "generated": "2026-10-28", "lines": 2, "by_mode": {"bus": 1, "metro": 1}, "stops_only_shapes": 1}
+    assert info == {"source": "test", "generated": "2026-10-28", "lines": 2, "by_mode": {"bus": 1, "metro": 1}, "stops_only_shapes": 1,
+                    "places": 9, "places_generated": "2026-10-28"}
     assert api.post("/api/admin/network/reload", headers=ADMIN).json()["lines"] == 2

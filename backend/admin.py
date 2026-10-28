@@ -15,6 +15,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import HTMLResponse
 
+import geocoder
 import network
 import trips
 import trust
@@ -110,10 +111,13 @@ async def network_info():
         "lines": len(net.lines),
         "by_mode": dict(Counter(line.data["mode"] for line in net.lines.values())),
         "stops_only_shapes": sum(1 for line in net.lines.values() if line.data.get("shape_source") != "tunismapper"),
+        "places": len(geocoder.current().entries),
+        "places_generated": geocoder.current().generated,
     }
 
 
 @admin.post("/network/reload")
 async def reload_network():
     network.load()
+    geocoder.load()
     return await network_info()

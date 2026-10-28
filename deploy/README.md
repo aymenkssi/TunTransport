@@ -55,7 +55,7 @@ nano .env
 Les lignes, arrêts, tracés et horaires viennent de tunismapper.com. Ils ne sont pas dans le dépôt (voir « Données » dans le README principal) : on les importe sur le serveur.
 
 ```bash
-./update-network.sh          # ≈ 4 min : crée data/network.json (228 lignes) puis redémarre l'API
+./update-network.sh          # ≈ 5 min : data/network.json (228 lignes), data/places.json (adresses), puis redémarre l'API
 ```
 
 Pour suivre les changements d'horaires, relancez-le chaque mois :
@@ -127,6 +127,6 @@ docker compose exec -T mongo mongorestore --gzip --archive=/backups/tuntransport
 | `GET /api/live` | Nombre de véhicules en direct par ligne. |
 | `POST /api/vehicles/report` | « Ce véhicule n'existe pas » : 2 signalements de voyageurs de confiance (3 si le véhicule est confirmé par plusieurs passagers) le masquent et pénalisent la réputation de ses auteurs. 10 par jour et par utilisateur. |
 | `GET /api/stops/search?q=` | Arrêts dont le nom contient `q`, avec leurs lignes. |
-| `GET /api/places/search?q=` | Adresses et lieux en Tunisie (OpenStreetMap / Nominatim), d'abord ceux proches d'un arrêt. Une requête par seconde au plus vers Nominatim, résultats en cache 7 jours ; l'app ne cherche qu'à la validation (Nominatim interdit l'auto-complétion). |
+| `GET /api/places/search?q=&autocomplete=` | Adresses et lieux. D'abord l'index local du Grand Tunis (`data/places.json`, OpenStreetMap) : tolérant aux fautes, noms usuels (Avicenne = Ibn Sina, Lac 2…), numéros, arabe, utilisable pendant la frappe. À la validation seulement, Nominatim complète s'il y a moins de 3 résultats (1 requête/s au plus, cache 7 jours). |
 | `POST /api/routes/plan` | Itinéraire d'un arrêt ou d'un point à un autre, au départ de maintenant : marche, correspondances (400 m max), jusqu'à 3 propositions. Attente « en direct » si un passager partage un véhicule qui approche, sinon horaire officiel (trains, RFR) ou estimation (métro, bus). |
 | `/api/admin/…` et `/admin` | Administration (jeton `ADMIN_TOKEN` obligatoire). |

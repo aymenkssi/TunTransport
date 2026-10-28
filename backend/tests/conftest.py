@@ -83,6 +83,10 @@ def api(monkeypatch, tmp_path, clock):
     path = tmp_path / "network.json"
     path.write_text(json.dumps(NETWORK), encoding="utf-8")
     monkeypatch.setenv("NETWORK_FILE", str(path))
+    from places_fixture import PLACES
+    places_path = tmp_path / "places.json"
+    places_path.write_text(json.dumps(PLACES, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setenv("PLACES_FILE", str(places_path))
     monkeypatch.setenv("ADMIN_TOKEN", ADMIN_TOKEN)
     monkeypatch.setattr(trips, "POSITION_COOLDOWN_S", 0)
     with TestClient(server.app) as c:

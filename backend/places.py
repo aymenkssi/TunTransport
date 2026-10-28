@@ -1,6 +1,11 @@
-"""Recherche d'adresses et de lieux (OpenStreetMap / Nominatim) pour l'itinéraire.
+"""Recherche d'adresses et de lieux pour l'itinéraire.
 
-- GET /api/places/search?q=  : adresses et lieux en Tunisie correspondant à q.
+- GET /api/places/search?q=&autocomplete=  : adresses et lieux correspondant à q.
+
+1. D'abord l'index local du Grand Tunis (geocoder.py) : tolérant aux fautes, instantané, utilisable
+   pendant la frappe (autocomplete=true).
+2. À la validation seulement, si l'index local trouve peu de résultats (lieu hors du Grand Tunis, lieu
+   absent de l'index), Nominatim complète.
 
 Règles d'usage de Nominatim respectées : une requête par seconde au plus pour tout le serveur, un
 User-Agent qui identifie l'application, pas d'auto-complétion (l'app ne cherche qu'à la validation),
@@ -17,6 +22,7 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+import geocoder
 import routing
 from geo import haversine_m
 
@@ -28,6 +34,8 @@ MIN_INTERVAL_S = 1.0
 CACHE_SIZE = 2000
 CACHE_TTL_S = 7 * 86400
 MAX_RESULTS = 6
+LOCAL_ENOUGH = 3               # à partir de 3 résultats locaux, inutile d'interroger Nominatim
+SAME_PLACE_M = 300
 FETCH_RESULTS = 12
 # Le Grand Tunis, où se trouve l'essentiel du réseau : Nominatim y privilégie ses résultats.
 VIEWBOX = "9.85,37.10,10.45,36.55"
@@ -81,6 +89,17 @@ def _to_hit(item: dict) -> Optional[PlaceHit]:
 router = APIRouter(prefix="/api")
 
 
+def _with_stop_distance(hits: List[PlaceHit]) -> List[PlaceHit]:
+    stops = [(s["lat"], s["lon"]) for s in routing.graph().stops.values()]
+    return [h.model_copy(update={"stop_distance_m": round(min((haversine_m((h.lat, h.lon), s) for s in stops), default=0)) if stops else None})
+            for h in hits]
+
+
+def _local(query: str, autocomplete: bool) -> List[PlaceHit]:
+    return _with_stop_distance([PlaceHit(name=h.name, detail=h.detail, lat=h.lat, lon=h.lon, kind=h.kind)
+                                for h in geocoder.search(query, limit=MAX_RESULTS, autocomplete=autocomplete)])
+
+
 def _rank(hits: List[PlaceHit]) -> List[PlaceHit]:
     """D'abord les lieux à distance de marche d'un arrêt (dans l'ordre de Nominatim), puis les autres
     du plus proche au plus loin du réseau : un lieu sans arrêt à proximité ne donne pas d'itinéraire."""
@@ -96,10 +115,26 @@ def _rank(hits: List[PlaceHit]) -> List[PlaceHit]:
 
 
 @router.get("/places/search", response_model=List[PlaceHit])
-async def search_places(q: str):
+async def search_places(q: str, autocomplete: bool = False):
     query = " ".join(q.split())[:100]
-    if len(query) < 3:
+    if len(query) < 2:
         return []
+    local = _local(query, autocomplete)
+    # Pendant la frappe, jamais Nominatim : ses règles d'usage interdisent l'auto-complétion.
+    if autocomplete or len(local) >= LOCAL_ENOUGH or len(query) < 3:
+        return local
+    try:
+        remote = await _nominatim(query)
+    except HTTPException:
+        if local:
+            return local  # Nominatim indisponible : les résultats locaux suffisent
+        raise
+    extra = [r for r in remote if not any(
+        r.name.lower() == h.name.lower() and haversine_m((r.lat, r.lon), (h.lat, h.lon)) < SAME_PLACE_M for h in local)]
+    return (local + extra)[:MAX_RESULTS]
+
+
+async def _nominatim(query: str) -> List[PlaceHit]:
     key = query.lower()
     cached = _cache.get(key)
     if cached and time.time() - cached[0] < CACHE_TTL_S:

@@ -131,5 +131,7 @@ export type PlaceHit = {
   stop_distance_m: number | null; // distance to the nearest stop of the network
 };
 
-/** Addresses and places (OpenStreetMap). Call on submit only: Nominatim forbids autocomplete. */
-export const searchPlaces = (q: string) => request<PlaceHit[]>(`/places/search?q=${encodeURIComponent(q)}`);
+/** Addresses and places (OpenStreetMap). `autocomplete`: local Grand Tunis index only, fine while typing;
+ * without it, the server may also ask Nominatim (whole country), so call it on submit only. */
+export const searchPlaces = (q: string, autocomplete = false) =>
+  request<PlaceHit[]>(`/places/search?q=${encodeURIComponent(q)}${autocomplete ? "&autocomplete=true" : ""}`);

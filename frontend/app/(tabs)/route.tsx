@@ -28,8 +28,8 @@ export default function RouteScreen() {
   const [picking, setPicking] = useState<Field | null>(null);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<StopHit[]>([]);
-  // Addresses are searched on submit only (Nominatim usage policy: no autocomplete).
-  const [addresses, setAddresses] = useState<{ query: string; hits: PlaceHit[] | null; failed: boolean } | null>(null);
+  // Addresses: local index while typing; `full` adds the whole country (Nominatim) on submit.
+  const [addresses, setAddresses] = useState<{ query: string; hits: PlaceHit[] | null; failed: boolean; full: boolean } | null>(null);
   const [results, setResults] = useState<Itinerary[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -48,20 +48,26 @@ export default function RouteScreen() {
   const findAddress = () => {
     const q = query.trim();
     if (q.length < 3) return;
-    setAddresses({ query: q, hits: null, failed: false });
+    setAddresses((cur) => ({ query: q, hits: cur?.query === q ? cur.hits : null, failed: false, full: true }));
     searchPlaces(q)
-      .then((found) => setAddresses({ query: q, hits: found, failed: false }))
-      .catch(() => setAddresses({ query: q, hits: [], failed: true }));
+      .then((found) => setAddresses({ query: q, hits: found, failed: false, full: true }))
+      .catch(() => setAddresses((cur) => ({ query: q, hits: cur?.hits ?? [], failed: true, full: true })));
   };
 
-  // Stop search, debounced.
+  // Stops and addresses while typing, debounced.
   useEffect(() => {
     const q = query.trim();
     if (q.length < 2) {
       setHits([]);
+      setAddresses(null);
       return;
     }
-    const timer = setTimeout(() => searchStops(q).then(setHits).catch(() => setHits([])), 250);
+    const timer = setTimeout(() => {
+      searchStops(q).then(setHits).catch(() => setHits([]));
+      searchPlaces(q, true)
+        .then((found) => setAddresses((cur) => (cur?.full && cur.query === q ? cur : { query: q, hits: found, failed: false, full: false })))
+        .catch(() => {});
+    }, 250);
     return () => clearTimeout(timer);
   }, [query]);
 
@@ -188,7 +194,8 @@ export default function RouteScreen() {
             <Ionicons name="map-outline" size={20} color={colors.info} />
             <Text style={styles.suggestionText}>Choisir un point sur la carte</Text>
           </Pressable>
-          {hits.map((s) => (
+          {hits.length > 0 && <Text style={styles.sectionLabel}>Arrêts</Text>}
+          {hits.slice(0, 5).map((s) => (
             <Pressable key={s.id} style={styles.suggestion} onPress={() => setPlace(editing, { stop_id: s.id, name: s.name, lat: s.lat, lon: s.lon })}>
               <Ionicons name="location-outline" size={20} color={colors.onSurfaceSecondary} />
               <View style={styles.suggestionBody}>
@@ -201,15 +208,7 @@ export default function RouteScreen() {
               </View>
             </Pressable>
           ))}
-          {query.trim().length >= 3 && addresses?.query !== query.trim() && (
-            <Pressable style={styles.suggestion} onPress={findAddress}>
-              <Ionicons name="search" size={20} color={colors.info} />
-              <Text style={styles.suggestionText} numberOfLines={1}>
-                Rechercher l’adresse « {query.trim()} »
-              </Text>
-            </Pressable>
-          )}
-          {addresses && (
+          {addresses && (addresses.hits === null || addresses.hits.length > 0 || addresses.full) && (
             <>
               <Text style={styles.sectionLabel}>Adresses et lieux</Text>
               {addresses.hits === null ? (
@@ -234,6 +233,14 @@ export default function RouteScreen() {
               )}
               <Text style={styles.credit}>Adresses © contributeurs OpenStreetMap</Text>
             </>
+          )}
+          {query.trim().length >= 3 && !(addresses?.full && addresses.query === query.trim()) && (
+            <Pressable style={styles.suggestion} onPress={findAddress}>
+              <Ionicons name="search" size={20} color={colors.info} />
+              <Text style={styles.suggestionText} numberOfLines={1}>
+                Chercher « {query.trim()} » dans toute la Tunisie
+              </Text>
+            </Pressable>
           )}
           <Pressable style={styles.cancel} onPress={() => setEditing(null)}>
             <Text style={styles.cancelText}>Annuler</Text>
