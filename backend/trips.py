@@ -5,6 +5,7 @@
                                           la trace et ne publie que la position le long du tracé.
 - POST /api/trips/{id}/end              : fin du trajet, la position disparaît immédiatement.
 - GET  /api/lines/{id}/vehicles         : véhicules de la ligne (position, fiabilité, ETA à un arrêt).
+- GET  /api/vehicles/live               : tous les véhicules en direct du réseau (carte d'accueil).
 - GET  /api/live                        : nombre de véhicules en direct par ligne.
 
 Confidentialité : les coordonnées brutes ne sont jamais enregistrées. Seule la position le long du
@@ -74,6 +75,14 @@ class VehicleOut(BaseModel):
     reliability: float
     status: Literal["fiable", "probable", "obsolète"]
     eta_s: Optional[int] = None
+
+
+class LiveVehicle(VehicleOut):
+    line_id: str
+    line_label: str
+    long_name: str
+    mode: str
+    color: Optional[str] = None
 
 
 # ------------------------ Helpers ------------------------
@@ -176,39 +185,58 @@ async def end_trip(trip_id: str, user: dict = Depends(current_user)):
     return {"ok": True}
 
 
+def _vehicle_out(line: "network.LoadedLine", vehicle: vh.Vehicle, t: float, stop_id: Optional[str] = None) -> Optional[dict]:
+    """Véhicule prêt à afficher (position sur la carte, fiabilité, ETA), ou None s'il a expiré."""
+    score, status = vh.reliability(vehicle, t)
+    if status == "expiré":
+        return None
+    direction = line.data["directions"][vehicle.direction]
+    shape = line.shapes[vehicle.direction]
+    along = min(vehicle.estimated_along(t), shape.length_m)
+    lat, lon = shape.point_at(along)
+    eta = None
+    if stop_id:
+        stop = next((s for s in direction["stops"] if s["id"] == stop_id), None)
+        seconds = vh.eta_seconds(vehicle, stop["along_m"], t) if stop else None
+        eta = None if seconds is None else round(seconds)
+    return {
+        "direction": vehicle.direction,
+        "headsign": direction["headsign"],
+        "lat": round(lat, 6),
+        "lon": round(lon, 6),
+        "along_m": round(along),
+        "speed_mps": round(vehicle.speed_mps, 1),
+        "confirmations": len(vehicle.contributors),
+        "age_s": round(t - vehicle.last_update),
+        "reliability": round(score, 2),
+        "status": status,
+        "eta_s": eta,
+    }
+
+
 @router.get("/lines/{line_id}/vehicles", response_model=List[VehicleOut])
 async def line_vehicles(line_id: str, stop_id: Optional[str] = None):
     line = network.current().line(line_id)
     t = now()
-    out = []
-    for vehicle in vh.cluster_vehicles(await _fresh_contributions(line_id), t):
-        score, status = vh.reliability(vehicle, t)
-        if status == "expiré":
-            continue
-        direction = line.data["directions"][vehicle.direction]
-        shape = line.shapes[vehicle.direction]
-        along = min(vehicle.estimated_along(t), shape.length_m)
-        lat, lon = shape.point_at(along)
-        eta = None
-        if stop_id:
-            stop = next((s for s in direction["stops"] if s["id"] == stop_id), None)
-            seconds = vh.eta_seconds(vehicle, stop["along_m"], t) if stop else None
-            eta = None if seconds is None else round(seconds)
-        out.append(VehicleOut(
-            direction=vehicle.direction,
-            headsign=direction["headsign"],
-            lat=round(lat, 6),
-            lon=round(lon, 6),
-            along_m=round(along),
-            speed_mps=round(vehicle.speed_mps, 1),
-            confirmations=len(vehicle.contributors),
-            age_s=round(t - vehicle.last_update),
-            reliability=round(score, 2),
-            status=status,
-            eta_s=eta,
-        ))
+    out = [VehicleOut(**v) for vehicle in vh.cluster_vehicles(await _fresh_contributions(line_id), t)
+           if (v := _vehicle_out(line, vehicle, t, stop_id))]
     if stop_id:
         out.sort(key=lambda v: (v.eta_s is None, v.eta_s or 0))
+    return out
+
+
+@router.get("/vehicles/live", response_model=List[LiveVehicle])
+async def network_vehicles():
+    """Tous les véhicules en direct du réseau, pour la carte d'accueil."""
+    t = now()
+    net = network.current()
+    out = []
+    for vehicle in vh.cluster_vehicles(await _fresh_contributions(), t):
+        line = net.lines.get(vehicle.line_id)
+        v = _vehicle_out(line, vehicle, t) if line else None
+        if v:
+            out.append(LiveVehicle(**v, line_id=line.id, line_label=line.data["short_name"] or line.data["long_name"],
+                                   long_name=line.data["long_name"], mode=line.data["mode"], color=line.data.get("color")))
     return out
 
 

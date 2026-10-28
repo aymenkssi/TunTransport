@@ -37,6 +37,14 @@ export type Vehicle = {
   eta_s: number | null;
 };
 
+export type LiveVehicle = Vehicle & {
+  line_id: string;
+  line_label: string;
+  long_name: string;
+  mode: Mode;
+  color: string | null;
+};
+
 export type Fix = { t: number; lat: number; lon: number; accuracy: number };
 
 export type PositionResult = {
@@ -52,6 +60,7 @@ export const lineLabel = (line: LineSummary) => line.short_name || line.long_nam
 
 export const getLines = () => request<LineSummary[]>("/lines");
 export const getLine = (id: string) => request<Line>(`/lines/${encodeURIComponent(id)}`);
+export const getLiveVehicles = () => request<LiveVehicle[]>("/vehicles/live");
 export const getLive = () => request<Record<string, number>>("/live");
 
 export const getVehicles = (lineId: string, stopId?: string) =>

@@ -137,3 +137,15 @@ def test_user_can_delete_all_their_data(api, clock, user):
     assert api.post("/api/users/me/delete", headers=h).status_code == 401
     counts = {name: api.portal.call(server.db[name].count_documents, {}) for name in ("users", "trips", "contributions")}
     assert counts == {"users": 1, "trips": 1, "contributions": 1}
+
+
+def test_network_live_map_lists_every_line(api, clock, user):
+    ride(api, clock, user())
+    ride(api, clock, user(), start_lon=10.1603)
+    ride(api, clock, user(), line_id="L2", start_lon=10.16, lat=LAT + 0.005)
+    found = sorted(api.get("/api/vehicles/live").json(), key=lambda v: v["line_id"])
+    assert [(v["line_id"], v["line_label"], v["mode"], v["color"], v["confirmations"]) for v in found] == [
+        ("L1", "1", "bus", "#E30613", 2), ("L2", "2", "metro", "#0071E3", 1)]
+    assert found[0]["status"] == "fiable" and abs(found[0]["lat"] - LAT) < 1e-4
+    clock.advance(400)
+    assert api.get("/api/vehicles/live").json() == []

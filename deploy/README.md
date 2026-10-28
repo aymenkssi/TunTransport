@@ -123,5 +123,6 @@ docker compose exec -T mongo mongorestore --gzip --archive=/backups/tuntransport
 | `POST /api/trips/{id}/positions` | Dernières positions GPS (≈ 60 s). Le serveur vérifie la trace (≥ 80 % des points près du tracé, bon sens, vitesse plausible) et ne publie que la position le long de la ligne. Coordonnées brutes jamais enregistrées. |
 | `POST /api/trips/{id}/end` | Fin du trajet : la position disparaît immédiatement. Fin automatique après 2 h. |
 | `GET /api/lines/{id}/vehicles?stop_id=` | Véhicules de la ligne : passagers regroupés par véhicule, position, nombre de passagers, âge, fiabilité (fiable / probable / obsolète), temps d'arrivée à l'arrêt demandé. |
+| `GET /api/vehicles/live` | Tous les véhicules en direct du réseau, avec la ligne, sa couleur et son numéro (carte d'accueil de l'app). |
 | `GET /api/live` | Nombre de véhicules en direct par ligne. |
 | `/api/admin/…` et `/admin` | Administration (jeton `ADMIN_TOKEN` obligatoire). |

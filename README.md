@@ -80,6 +80,8 @@ Vérifications : `yarn typecheck` et `yarn lint`.
 
 ## Ce que fait l'application
 
+- **Carte en direct** (écran d'accueil) : tous les véhicules partagés sur le réseau, à la couleur et au numéro de
+  leur ligne, filtre par mode, position de l'utilisateur ; toucher un véhicule ouvre sa fiche et sa ligne.
 - **Lignes** : 228 lignes (7 métro, 3 RFR, 29 train, 189 bus), recherche, filtre par mode, nombre de
   véhicules en direct par ligne.
 - **Ligne** : carte (tracé, arrêts, véhicules en direct colorés par fiabilité, avec le nombre de passagers),

@@ -6,9 +6,15 @@ import { StyleProp, View, ViewStyle } from "react-native";
 
 import { MAP_HTML, MapData } from "@/src/components/map-html";
 
-type Props = { data: MapData; onSelectStop?: (id: string) => void; style?: StyleProp<ViewStyle> };
+type Props = {
+  data: MapData;
+  onSelectStop?: (id: string) => void;
+  onSelectVehicle?: (index: number) => void;
+  onPressMap?: () => void;
+  style?: StyleProp<ViewStyle>;
+};
 
-export function LineMap({ data, onSelectStop, style }: Props) {
+export function LineMap({ data, onSelectStop, onSelectVehicle, onPressMap, style }: Props) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [loaded, setLoaded] = useState(false);
   const src = useMemo(() => URL.createObjectURL(new Blob([MAP_HTML], { type: "text/html" })), []);
@@ -22,11 +28,13 @@ export function LineMap({ data, onSelectStop, style }: Props) {
         const msg = JSON.parse(e.data);
         if (msg.type === "ready") setLoaded(true);
         if (msg.type === "stop" && typeof msg.id === "string") onSelectStop?.(msg.id);
+        if (msg.type === "vehicle" && typeof msg.index === "number") onSelectVehicle?.(msg.index);
+        if (msg.type === "map") onPressMap?.();
       } catch {}
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [onSelectStop]);
+  }, [onSelectStop, onSelectVehicle, onPressMap]);
 
   useEffect(() => {
     if (loaded) frame.current?.contentWindow?.postMessage(JSON.stringify(data), "*");

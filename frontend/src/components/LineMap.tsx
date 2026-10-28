@@ -5,9 +5,15 @@ import { WebView, WebViewMessageEvent } from "react-native-webview";
 
 import { MAP_HTML, MapData } from "@/src/components/map-html";
 
-type Props = { data: MapData; onSelectStop?: (id: string) => void; style?: StyleProp<ViewStyle> };
+type Props = {
+  data: MapData;
+  onSelectStop?: (id: string) => void;
+  onSelectVehicle?: (index: number) => void;
+  onPressMap?: () => void;
+  style?: StyleProp<ViewStyle>;
+};
 
-export function LineMap({ data, onSelectStop, style }: Props) {
+export function LineMap({ data, onSelectStop, onSelectVehicle, onPressMap, style }: Props) {
   const ref = useRef<WebView>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -20,6 +26,8 @@ export function LineMap({ data, onSelectStop, style }: Props) {
       const msg = JSON.parse(e.nativeEvent.data);
       if (msg.type === "ready") setLoaded(true);
       if (msg.type === "stop" && typeof msg.id === "string") onSelectStop?.(msg.id);
+      if (msg.type === "vehicle" && typeof msg.index === "number") onSelectVehicle?.(msg.index);
+      if (msg.type === "map") onPressMap?.();
     } catch {}
   };
 

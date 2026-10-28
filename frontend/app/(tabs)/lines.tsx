@@ -1,13 +1,13 @@
 // Lines screen: search, filter by mode, live vehicles per line, and the trip being shared.
 import { Ionicons } from "@expo/vector-icons";
-import { router, Stack } from "expo-router";
+import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { backendConfigured } from "@/src/api/client";
 import { getLines, getLive, LineSummary, Mode } from "@/src/api/network";
 import { LineBadge } from "@/src/components/LineBadge";
-import { useShare } from "@/src/sharing/use-share";
+import { ShareBanner } from "@/src/components/ShareBanner";
 import { Colors, radius, spacing, type, useColors } from "@/src/theme";
 
 const MODES: { key: Mode; label: string }[] = [
@@ -22,7 +22,6 @@ const LIVE_REFRESH_MS = 30_000;
 export default function LinesScreen() {
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const share = useShare();
   const [lines, setLines] = useState<LineSummary[] | null>(null);
   const [live, setLive] = useState<Record<string, number>>({});
   const [error, setError] = useState(false);
@@ -79,24 +78,7 @@ export default function LinesScreen() {
 
   return (
     <View style={styles.screen}>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <Pressable onPress={() => router.push("/about")} hitSlop={12} accessibilityLabel="À propos et confidentialité">
-              <Ionicons name="information-circle-outline" size={24} color={colors.onSurface} />
-            </Pressable>
-          ),
-        }}
-      />
-      {share && (
-        <Pressable style={styles.shareBanner} onPress={() => router.push(`/line/${share.lineId}`)}>
-          <Ionicons name="radio" size={18} color={colors.onBrand} />
-          <Text style={styles.shareBannerText} numberOfLines={1}>
-            Vous partagez {share.lineLabel} vers {share.headsign}
-          </Text>
-          <Ionicons name="chevron-forward" size={18} color={colors.onBrand} />
-        </Pressable>
-      )}
+      <ShareBanner />
       <View style={styles.searchRow}>
         <Ionicons name="search" size={18} color={colors.onSurfaceSecondary} />
         <TextInput
@@ -173,11 +155,6 @@ const makeStyles = (c: Colors) =>
     message: { color: c.onSurface, fontSize: type.lg, textAlign: "center" },
     button: { backgroundColor: c.brand, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm + 2, borderRadius: radius.md },
     buttonText: { color: c.onBrand, fontWeight: "700", fontSize: type.base },
-    shareBanner: {
-      flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: c.brand,
-      marginHorizontal: spacing.md, marginTop: spacing.sm, padding: spacing.sm + 4, borderRadius: radius.md,
-    },
-    shareBannerText: { flex: 1, color: c.onBrand, fontWeight: "600", fontSize: type.base },
     searchRow: {
       flexDirection: "row", alignItems: "center", gap: spacing.sm, marginHorizontal: spacing.md, marginTop: spacing.sm,
       paddingHorizontal: spacing.sm + 4, backgroundColor: c.surfaceSecondary, borderRadius: radius.md,

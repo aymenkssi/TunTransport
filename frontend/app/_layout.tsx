@@ -21,7 +21,7 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: colors.surface },
           }}
         >
-          <Stack.Screen name="index" options={{ title: "TransTunisLive" }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "TransTunisLive" }} />
           <Stack.Screen name="line/[id]" options={{ title: "" }} />
           <Stack.Screen name="about" options={{ title: "À propos" }} />
         </Stack>
