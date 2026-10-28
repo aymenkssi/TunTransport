@@ -26,7 +26,9 @@ Collaborative Android app where passengers share the live position of the public
 - [x] Importer for 228 lines (stop reordering, outlier stops, Douglas-Peucker shapes).
 - [x] API: users, lines, suggest, trips, positions, vehicles + ETA, live counts, data deletion, admin.
   30 backend tests.
-- [x] App: lines list (search, modes, live badges), line screen (map, direction, live vehicles, ETA,
+- [x] Journey planner (time-dependent Dijkstra, walking + transfers, live waits from shared vehicles,
+  official timetables for trains/RFR, estimated waits for metro/bus whose source timetable is hourly).
+- [x] App: live map home, journey planner tab, lines list (search, modes, live badges), line screen (map, direction, live vehicles, ETA,
   timetable), trip sharing with auto-stop, about/privacy/delete data.
 
 ## Known Constraints

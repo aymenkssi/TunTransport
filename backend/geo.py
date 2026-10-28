@@ -74,3 +74,9 @@ class Shape:
         dlat = math.degrees(margin_m / EARTH_RADIUS_M)
         dlon = dlat / max(math.cos(math.radians(sum(lats) / len(lats))), 0.01)
         return min(lats) - dlat, min(lons) - dlon, max(lats) + dlat, max(lons) + dlon
+
+    def slice(self, start_m, end_m):
+        """Points du tracé entre deux abscisses (inclus), pour dessiner un trajet."""
+        start_m, end_m = sorted((max(0.0, start_m), min(end_m, self.length_m)))
+        inner = [p for p, c in zip(self.points, self.cumulative_m) if start_m < c < end_m]
+        return [self.point_at(start_m), *inner, self.point_at(end_m)]

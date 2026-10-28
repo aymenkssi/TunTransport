@@ -102,13 +102,13 @@ def simplify(points, tolerance_m):
     return [p for p, k in zip(points, keep) if k]
 
 
-def order_stops(points):
+def order_stops(points, keep=()):
     """Remet en ordre une suite d'arrêts (lat, lon) pour en faire un tracé.
 
     La source liste parfois des arrêts d'embranchement à la fin, ou des arrêts
     aux coordonnées fausses. On déplace un arrêt tant que le placer ailleurs
     raccourcit nettement le parcours, puis on écarte ceux qui imposent encore un
-    détour énorme. Retourne (indices dans l'ordre, indices écartés)."""
+    détour énorme, sauf ceux de `keep` (les terminus). Retourne (indices dans l'ordre, indices écartés)."""
     def d(i, j):
         return haversine_m(points[i], points[j])
 
@@ -143,7 +143,10 @@ def order_stops(points):
 
     excluded = []
     while len(seq) > 2:
-        k = max(range(len(seq)), key=lambda k: detour(seq, k))
+        candidates = [k for k in range(len(seq)) if seq[k] not in keep]
+        if not candidates:
+            break
+        k = max(candidates, key=lambda k: detour(seq, k))
         spacing = sorted(d(a, b) for a, b in zip(seq, seq[1:]))[len(seq) // 2]
         if detour(seq, k) < max(OUTLIER_DETOUR_M, 4 * spacing):
             break
@@ -184,7 +187,10 @@ def parse_line(route_id, page):
         shape_source = "tunismapper"
     else:
         # À défaut : arrêts reliés en ligne droite, dans l'ordre le plus plausible.
-        order, _ = order_stops([(s["lat"], s["lon"]) for s in stops])
+        # Un terminus (nom d'une destination de la ligne) loin des autres arrêts est réel :
+        # ex. Tunis Marine, séparé du reste du TGM par la traversée du lac.
+        termini = {i for i, s in enumerate(stops) if any(similarity(s["name"], h) >= 0.8 for h in headsigns)}
+        order, _ = order_stops([(s["lat"], s["lon"]) for s in stops], keep=termini)
         points = [(stops[i]["lat"], stops[i]["lon"]) for i in order]
         shape_source = "stops"
     points = simplify(points, SIMPLIFY_TOLERANCE_M)

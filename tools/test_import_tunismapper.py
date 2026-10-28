@@ -22,6 +22,12 @@ class OrderStopsTest(unittest.TestCase):
         self.assertEqual(excluded, [4])
         self.assertEqual([points[i] for i in order], LINE)
 
+    def test_keeps_distant_terminus(self):
+        # Terminus à ~8 km, comme Tunis Marine au bout de la traversée du lac pour le TGM.
+        points = [(36.80, 10.00)] + LINE
+        self.assertEqual(order_stops(points, keep={0}), (list(range(9)), []))
+        self.assertEqual(order_stops(points)[1], [0])  # sans être un terminus, il est écarté
+
 
 if __name__ == "__main__":
     unittest.main()

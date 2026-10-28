@@ -10,7 +10,7 @@ type Props = {
   data: MapData;
   onSelectStop?: (id: string) => void;
   onSelectVehicle?: (index: number) => void;
-  onPressMap?: () => void;
+  onPressMap?: (lat: number, lon: number) => void;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -29,7 +29,7 @@ export function LineMap({ data, onSelectStop, onSelectVehicle, onPressMap, style
         if (msg.type === "ready") setLoaded(true);
         if (msg.type === "stop" && typeof msg.id === "string") onSelectStop?.(msg.id);
         if (msg.type === "vehicle" && typeof msg.index === "number") onSelectVehicle?.(msg.index);
-        if (msg.type === "map") onPressMap?.();
+        if (msg.type === "map") onPressMap?.(msg.lat, msg.lon);
       } catch {}
     };
     window.addEventListener("message", onMessage);

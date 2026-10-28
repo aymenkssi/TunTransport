@@ -11,6 +11,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 import admin
 import network
+import routing
 import trips
 from auth import current_user, hash_token
 from database import client, db
@@ -54,6 +55,7 @@ async def delete_me(user: dict = Depends(current_user)):
 app.include_router(api)
 app.include_router(network.router)
 app.include_router(trips.router)
+app.include_router(routing.router)
 app.include_router(admin.admin)
 app.include_router(admin.admin_page)
 

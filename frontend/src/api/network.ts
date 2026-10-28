@@ -73,3 +73,43 @@ export const postPositions = (tripId: string, fixes: Fix[]) =>
   authed<PositionResult>(`/trips/${tripId}/positions`, { method: "POST", body: JSON.stringify({ fixes }) });
 
 export const endTrip = (tripId: string) => authed<{ ok: boolean }>(`/trips/${tripId}/end`, { method: "POST" });
+
+export type StopHit = { id: string; name: string; lat: number; lon: number; lines: LineSummary[] };
+
+export type PlacePoint = { name: string; lat: number; lon: number; stop_id?: string | null };
+
+export type Leg = {
+  kind: "walk" | "ride";
+  from: PlacePoint;
+  to: PlacePoint;
+  depart: string;
+  arrive: string;
+  duration_s: number;
+  path: [number, number][];
+  distance_m: number | null;
+  line: LineSummary | null;
+  direction: number | null;
+  headsign: string | null;
+  stops: number | null;
+  wait_s: number | null;
+  wait_source: "en direct" | "horaire" | "estimé" | null;
+  dashed: boolean | null;
+};
+
+export type Itinerary = {
+  depart: string;
+  arrive: string;
+  duration_s: number;
+  walk_m: number;
+  transfers: number;
+  live: boolean;
+  legs: Leg[];
+};
+
+/** A place for the planner: a stop, or a point (my position, a point tapped on the map). */
+export type PlanPlace = { stop_id: string; name: string } | { lat: number; lon: number; name: string };
+
+export const searchStops = (q: string) => request<StopHit[]>(`/stops/search?q=${encodeURIComponent(q)}`);
+
+export const planRoute = (origin: PlanPlace, destination: PlanPlace) =>
+  request<Itinerary[]>("/routes/plan", { method: "POST", body: JSON.stringify({ origin, destination }) });

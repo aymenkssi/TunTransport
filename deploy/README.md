@@ -125,4 +125,6 @@ docker compose exec -T mongo mongorestore --gzip --archive=/backups/tuntransport
 | `GET /api/lines/{id}/vehicles?stop_id=` | Véhicules de la ligne : passagers regroupés par véhicule, position, nombre de passagers, âge, fiabilité (fiable / probable / obsolète), temps d'arrivée à l'arrêt demandé. |
 | `GET /api/vehicles/live` | Tous les véhicules en direct du réseau, avec la ligne, sa couleur et son numéro (carte d'accueil de l'app). |
 | `GET /api/live` | Nombre de véhicules en direct par ligne. |
+| `GET /api/stops/search?q=` | Arrêts dont le nom contient `q`, avec leurs lignes. |
+| `POST /api/routes/plan` | Itinéraire d'un arrêt ou d'un point à un autre, au départ de maintenant : marche, correspondances (400 m max), jusqu'à 3 propositions. Attente « en direct » si un passager partage un véhicule qui approche, sinon horaire officiel (trains, RFR) ou estimation (métro, bus). |
 | `/api/admin/…` et `/admin` | Administration (jeton `ADMIN_TOKEN` obligatoire). |

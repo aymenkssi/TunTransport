@@ -32,6 +32,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="route"
+        options={{
+          title: "Itinéraire",
+          tabBarIcon: ({ color, size }) => <Ionicons name="navigate" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="lines"
         options={{
           title: "Lignes",
