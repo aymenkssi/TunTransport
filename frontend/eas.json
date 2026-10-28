@@ -13,7 +13,8 @@
       "env": {
         "EXPO_PUBLIC_BACKEND_URL": "https://api.tuntransport.academy",
         "EXPO_PUBLIC_SITE_URL": "https://tuntransport.academy"
-      }
+      },
+      "node": "22.14.0"
     },
     "preview": {
       "distribution": "internal",
@@ -23,7 +24,8 @@
       "env": {
         "EXPO_PUBLIC_BACKEND_URL": "https://api.tuntransport.academy",
         "EXPO_PUBLIC_SITE_URL": "https://tuntransport.academy"
-      }
+      },
+      "node": "22.14.0"
     },
     "production": {
       "autoIncrement": true,
@@ -33,7 +35,8 @@
       "env": {
         "EXPO_PUBLIC_BACKEND_URL": "https://api.tuntransport.academy",
         "EXPO_PUBLIC_SITE_URL": "https://tuntransport.academy"
-      }
+      },
+      "node": "22.14.0"
     }
   },
   "submit": {
