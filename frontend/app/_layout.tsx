@@ -29,6 +29,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "TransTunisLive" }} />
           <Stack.Screen name="line/[id]" options={{ title: "" }} />
           <Stack.Screen name="about" options={{ title: "À propos" }} />
+          <Stack.Screen name="suggestion" options={{ title: "Envoyer une suggestion" }} />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

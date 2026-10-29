@@ -1,6 +1,6 @@
 // Line screen: map with live vehicles, direction, stops with live ETA or timetable, and trip sharing.
 import { Ionicons } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -120,6 +120,13 @@ export default function LineScreen() {
         {line.shape_source !== "tunismapper" && (
           <Text style={styles.note}>Tracé approximatif (arrêts reliés en ligne droite).</Text>
         )}
+        <Pressable
+          onPress={() =>
+            router.push({ pathname: "/suggestion", params: { category: "data", line: line.id, lineLabel: `${line.short_name || ""} ${line.long_name}`.trim() } })
+          }
+        >
+          <Text style={styles.reportLink}>Signaler une erreur sur cette ligne (arrêt, horaire, tracé)</Text>
+        </Pressable>
 
         {!sharingHere && (
           <View style={styles.directions}>
@@ -265,6 +272,7 @@ const makeStyles = (c: Colors) =>
     vehicle: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
     statusDot: { width: 10, height: 10, borderRadius: 5 },
     vehicleText: { flex: 1 },
+    reportLink: { color: c.info, fontSize: type.sm, fontWeight: "600" },
     etaCard: { backgroundColor: c.infoSoft, borderRadius: radius.md, padding: spacing.md - 4, gap: 4 },
     stop: { flexDirection: "row", alignItems: "center", gap: spacing.sm + 4, paddingRight: spacing.md, minHeight: 44 },
     stopSelected: { backgroundColor: c.surfaceSecondary },

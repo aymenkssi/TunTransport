@@ -14,6 +14,7 @@ import geocoder
 import network
 import places
 import roads
+import suggestions
 import routing
 import trips
 import trust
@@ -52,6 +53,7 @@ async def delete_me(user: dict = Depends(current_user)):
     trip_ids = [t["id"] async for t in db.trips.find({"user_id": user["id"]}, {"id": 1})]
     await db.contributions.delete_many({"trip_id": {"$in": trip_ids}})
     await db.trips.delete_many({"user_id": user["id"]})
+    await db.suggestions.delete_many({"user_id": user["id"]})
     await db.users.delete_one({"id": user["id"]})
     return {"ok": True}
 
@@ -62,6 +64,8 @@ app.include_router(trips.router)
 app.include_router(routing.router)
 app.include_router(places.router)
 app.include_router(roads.router)
+app.include_router(suggestions.public)
+app.include_router(suggestions.admin)
 app.include_router(trust.router)
 app.include_router(admin.admin)
 app.include_router(admin.admin_page)
@@ -69,8 +73,8 @@ app.include_router(admin.admin_page)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
-    allow_methods=["GET", "POST"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type", "X-App-Version", "X-Platform"],
 )
 
 
@@ -82,6 +86,7 @@ async def startup():
     await db.users.create_index("token_hash", unique=True)
     await trips.setup()
     await trust.setup()
+    await suggestions.setup()
 
 
 @app.on_event("shutdown")

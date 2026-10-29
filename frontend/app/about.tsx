@@ -1,5 +1,7 @@
 // About: how sharing works, privacy, and deleting one's data.
+import { Ionicons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
+import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text } from "react-native";
 
@@ -36,6 +38,10 @@ export default function AboutScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Pressable style={styles.suggest} onPress={() => router.push("/suggestion")}>
+        <Ionicons name="chatbubbles-outline" size={20} color={colors.onBrand} />
+        <Text style={styles.suggestText}>Envoyer une suggestion</Text>
+      </Pressable>
       <Text style={styles.h}>Comment ça marche</Text>
       <Text style={styles.p}>
         Dans un bus, un métro ou un train, touchez « Je suis dans ce véhicule ». Votre téléphone envoie sa position
@@ -80,6 +86,8 @@ const makeStyles = (c: Colors) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: c.surface },
     content: { padding: spacing.md, gap: spacing.sm + 4 },
+    suggest: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: c.brand, borderRadius: radius.md, paddingVertical: spacing.sm + 4 },
+    suggestText: { color: c.onBrand, fontSize: type.base, fontWeight: "700" },
     h: { color: c.onSurface, fontSize: type.lg, fontWeight: "700", marginTop: spacing.sm },
     p: { color: c.onSurface, fontSize: type.base, lineHeight: 21 },
     link: { color: c.info, fontSize: type.base, fontWeight: "600" },

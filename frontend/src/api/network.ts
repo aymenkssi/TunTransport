@@ -161,3 +161,9 @@ export const roadRoute = (origin: PlanPlace, destination: PlanPlace, mode: RoadM
     method: "POST",
     body: JSON.stringify({ origin, destination, mode, ...(departAt ? { depart_at: departAt } : {}) }),
   });
+
+export type SuggestionCategory = "idea" | "bug" | "data" | "other";
+
+/** Message to the team, read in the admin page. At most 5 a day. */
+export const sendSuggestion = (s: { category: SuggestionCategory; message: string; line_id?: string; contact?: string }) =>
+  authed<{ ok: boolean }>("/suggestions", { method: "POST", body: JSON.stringify(s) });

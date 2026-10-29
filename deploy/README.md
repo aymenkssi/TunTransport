@@ -150,6 +150,7 @@ docker compose exec -T mongo mongorestore --gzip --archive=/backups/tuntransport
 | `GET /api/lines/{id}/vehicles?stop_id=` | Véhicules de la ligne : passagers regroupés par véhicule, position, nombre de passagers, âge, fiabilité (fiable / probable / obsolète), temps d'arrivée à l'arrêt demandé. |
 | `GET /api/vehicles/live` | Tous les véhicules en direct du réseau, avec la ligne, sa couleur et son numéro (carte d'accueil de l'app). |
 | `GET /api/live` | Nombre de véhicules en direct par ligne. |
+| `POST /api/suggestions` · `GET/PUT/DELETE /api/admin/suggestions` | Suggestions et signalements d'erreurs envoyés depuis l'app (idée, problème, erreur de ligne/arrêt/horaire, autre ; contact facultatif ; 5 par jour), lus dans l'onglet « Suggestions » de la page d'administration (nouvelle / lue / traitée, suppression). |
 | `POST /api/vehicles/report` | « Ce véhicule n'existe pas » : 2 signalements de voyageurs de confiance (3 si le véhicule est confirmé par plusieurs passagers) le masquent et pénalisent la réputation de ses auteurs. 10 par jour et par utilisateur. |
 | `GET /api/stops/search?q=` | Arrêts dont le nom contient `q`, avec leurs lignes. |
 | `GET /api/places/search?q=&autocomplete=` | Adresses et lieux. D'abord l'index local du Grand Tunis (`data/places.json`, OpenStreetMap) : tolérant aux fautes, noms usuels (Avicenne = Ibn Sina, Lac 2…), numéros, arabe, utilisable pendant la frappe. À la validation seulement, Nominatim complète s'il y a moins de 3 résultats (1 requête/s au plus, cache 7 jours). |

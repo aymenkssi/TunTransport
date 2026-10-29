@@ -43,6 +43,8 @@ Collaborative Android app where passengers share the live position of the public
 - [x] Itinerary modes Transports / Voiture / À pied: POST /api/routes/road via OSRM (public FOSSGIS
   servers, 1 req/s and 24 h cache; optional self-hosted OSRM with deploy/setup-osrm.sh), French
   instructions, street names isolated for bidi, car duration without traffic.
+- [x] Suggestions like Neon Strike: app screen (About, and 'report an error' on each line with the line
+  attached; optional contact), admin 'Suggestions' tab with new/read/done, filters, badge and delete.
 - [x] App: live map home, journey planner tab, lines list (search, modes, live badges), line screen (map, direction, live vehicles, ETA,
   timetable), trip sharing with auto-stop, about/privacy/delete data.
 

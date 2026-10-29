@@ -1,6 +1,9 @@
 // HTTP client for the TunTransport backend with an anonymous user session.
 // On first use the app registers an anonymous user and keeps its secret token in secure storage;
 // calls that need it (trips) send it as a Bearer token.
+import Constants from "expo-constants";
+import { Platform } from "react-native";
+
 import { storage } from "@/src/utils/storage";
 
 const BASE = (process.env.EXPO_PUBLIC_BACKEND_URL || "").replace(/\/+$/, "");
@@ -26,6 +29,9 @@ export async function request<T>(path: string, init: RequestInit = {}, token?: s
       ...init,
       headers: {
         "Content-Type": "application/json",
+        // Context shown with suggestions in the admin page.
+        "X-Platform": Platform.OS,
+        ...(Constants.expoConfig?.version ? { "X-App-Version": Constants.expoConfig.version } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(init.headers || {}),
       },

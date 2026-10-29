@@ -47,6 +47,16 @@
   .bars { display: flex; align-items: flex-end; gap: 4px; height: 120px; }
   .bars div { flex: 1; background: var(--brand); border-radius: 4px 4px 0 0; min-height: 2px; position: relative; }
   .axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 4px; }
+  .pill.new { background: rgba(255,59,71,.15); color: var(--brand); }
+  .pill.read { background: rgba(56,189,248,.15); color: var(--accent); }
+  .pill.done { background: rgba(52,211,153,.15); color: var(--ok); }
+  .msg { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 10px; display: grid; gap: 6px; background: var(--panel); }
+  .msg .meta { color: var(--muted); font-size: 13px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .msg .body { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+  .filters button[aria-pressed=true] { border-color: var(--brand); color: var(--text); }
+  button.danger { color: var(--red); }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -70,6 +80,7 @@
     <nav class="tabs" role="tablist">
       <button role="tab" data-tab="live" aria-selected="true">En direct</button>
       <button role="tab" data-tab="stats" aria-selected="false">Statistiques</button>
+      <button role="tab" data-tab="suggestions" aria-selected="false">Suggestions <span id="sugg-badge" class="pill new" hidden></span></button>
       <button role="tab" data-tab="network" aria-selected="false">Réseau</button>
     </nav>
 
@@ -98,6 +109,19 @@
       </section>
     </div>
 
+    <div data-panel="suggestions" hidden>
+      <h2>Suggestions des utilisateurs</h2>
+      <p class="hint">Envoyées depuis l'application (À propos → Envoyer une suggestion, ou « Signaler une erreur » sur une ligne), 5 par jour et par utilisateur. Le contact n'est rempli que si l'utilisateur souhaite une réponse.</p>
+      <div class="filters" id="sugg-filters">
+        <button data-status="" aria-pressed="true">Toutes</button>
+        <button data-status="new" aria-pressed="false">Nouvelles</button>
+        <button data-status="read" aria-pressed="false">Lues</button>
+        <button data-status="done" aria-pressed="false">Traitées</button>
+      </div>
+      <div class="status" id="sugg-status"></div>
+      <div id="sugg-list"></div>
+    </div>
+
     <div data-panel="network" hidden>
       <h2>Réseau</h2>
       <p class="hint">Lignes, arrêts, tracés et horaires importés par <code>tools/import_tunismapper.py</code> ; adresses et lieux du Grand Tunis par <code>tools/import_places.py</code> (OpenStreetMap). Après un nouvel import sur le serveur, rechargez-les ici sans redémarrer l'API.</p>
@@ -117,7 +141,9 @@ const fmtKm = (m) => (m / 1000).toLocaleString("fr-FR", { maximumFractionDigits:
 const fmtAge = (s) => (s < 60 ? `${s} s` : `${Math.round(s / 60)} min`);
 
 async function call(path, init = {}) {
-  const res = await fetch(`/api/admin${path}`, { ...init, headers: { Authorization: `Bearer ${token}` } });
+  const headers = { Authorization: `Bearer ${token}` };
+  if (init.body) headers["Content-Type"] = "application/json";
+  const res = await fetch(`/api/admin${path}`, { ...init, headers });
   if (res.status === 401) { logout(); throw new Error("Jeton invalide"); }
   if (!res.ok) throw new Error(`Erreur ${res.status}`);
   return res.json();
@@ -154,6 +180,68 @@ async function loadStats() {
     : `<tr><td colspan="2" class="muted">Pas encore de trajet validé.</td></tr>`;
 }
 
+const CATEGORY = { idea: "Idée", bug: "Problème dans l'app", data: "Erreur de ligne / arrêt / horaire", other: "Autre" };
+const STATUS = { new: "Nouvelle", read: "Lue", done: "Traitée" };
+let suggFilter = "";
+
+function updateSuggBadge(counts) {
+  const badge = $("sugg-badge");
+  badge.textContent = counts.new;
+  badge.hidden = !counts.new;
+}
+
+async function loadSuggestions() {
+  const r = await call("/suggestions" + (suggFilter ? `?status=${suggFilter}` : ""));
+  updateSuggBadge(r.counts);
+  document.querySelectorAll("#sugg-filters button").forEach((b) => {
+    const n = b.dataset.status ? r.counts[b.dataset.status] : r.counts.new + r.counts.read + r.counts.done;
+    b.textContent = `${{ "": "Toutes", new: "Nouvelles", read: "Lues", done: "Traitées" }[b.dataset.status]} (${n})`;
+    b.setAttribute("aria-pressed", String(b.dataset.status === suggFilter));
+  });
+  $("sugg-list").innerHTML = r.items.length ? r.items.map((s) => `
+    <div class="msg" data-id="${esc(s.id)}">
+      <div class="meta">
+        <span class="pill ${esc(s.status)}">${esc(STATUS[s.status])}</span>
+        <strong>${esc(CATEGORY[s.category] || s.category)}</strong>
+        <span>${esc(new Date(s.created_at).toLocaleString("fr-FR"))}</span>
+        ${s.line_label ? `<span>Ligne ${esc(s.line_label)}</span>` : ""}
+        ${s.platform ? `<span>${esc(s.platform)} ${esc(s.app_version || "")}</span>` : ""}
+      </div>
+      <div class="body">${esc(s.message)}</div>
+      ${s.contact ? `<div class="meta">Contact : ${esc(s.contact)}</div>` : ""}
+      <div class="actions">
+        ${s.status !== "read" ? `<button data-set="read">Marquer lue</button>` : ""}
+        ${s.status !== "done" ? `<button data-set="done">Marquer traitée</button>` : ""}
+        ${s.status !== "new" ? `<button data-set="new">Remettre en nouvelle</button>` : ""}
+        <button class="danger" data-delete>Supprimer</button>
+      </div>
+    </div>`).join("") : `<p class="hint">Aucune suggestion${suggFilter ? " dans ce filtre" : " pour l'instant"}.</p>`;
+}
+
+$("sugg-filters").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  suggFilter = b.dataset.status;
+  loadSuggestions().catch((err) => ($("sugg-status").innerHTML = `<span class="err">${esc(err.message)}</span>`));
+});
+
+$("sugg-list").addEventListener("click", async (e) => {
+  const b = e.target.closest("button");
+  const card = e.target.closest(".msg");
+  if (!b || !card) return;
+  try {
+    if (b.dataset.delete !== undefined) {
+      if (!confirm("Supprimer cette suggestion ?")) return;
+      await call(`/suggestions/${card.dataset.id}`, { method: "DELETE" });
+    } else {
+      await call(`/suggestions/${card.dataset.id}`, { method: "PUT", body: JSON.stringify({ status: b.dataset.set }) });
+    }
+    await loadSuggestions();
+  } catch (err) {
+    $("sugg-status").innerHTML = `<span class="err">${esc(err.message)}</span>`;
+  }
+});
+
 function renderNetwork(n) {
   const modes = Object.entries(n.by_mode).map(([m, c]) => kpi(c, m)).join("");
   $("net-kpis").innerHTML = kpi(n.lines, "lignes") + modes + kpi(n.stops_only_shapes, "tracés reconstruits") + kpi(n.generated || "—", "date d'import")
@@ -166,7 +254,7 @@ function show(tab) {
   document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
   document.querySelectorAll("[data-panel]").forEach((p) => (p.hidden = p.dataset.panel !== tab));
   clearInterval(liveTimer);
-  const load = { live: loadLive, stats: loadStats, network: loadNetwork }[tab];
+  const load = { live: loadLive, stats: loadStats, suggestions: loadSuggestions, network: loadNetwork }[tab];
   load().catch((e) => console.error(e));
   if (tab === "live") liveTimer = setInterval(() => loadLive().catch(() => {}), 10000);
 }
@@ -206,6 +294,7 @@ function start() {
   $("login").hidden = true;
   $("app").hidden = false;
   show("live");
+  call("/suggestions?status=new&limit=1").then((r) => updateSuggBadge(r.counts)).catch(() => {});
 }
 if (token) start();
 </script>
