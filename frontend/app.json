@@ -18,7 +18,14 @@
         "backgroundColor": "#0A4FC4"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.aymenkssi.tuntransport"
+      "package": "com.aymenkssi.tuntransport",
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "bundler": "metro",

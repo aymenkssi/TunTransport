@@ -93,7 +93,10 @@ async function startUpdates(): Promise<void> {
 
 async function stopUpdates(): Promise<void> {
   if (Platform.OS === "web") {
-    webWatch?.remove();
+    // expo-location's web build stops the watch, then throws while detaching its emitter.
+    try {
+      webWatch?.remove();
+    } catch {}
     webWatch = null;
     return;
   }

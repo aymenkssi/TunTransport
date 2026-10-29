@@ -13,7 +13,8 @@
     "doctor": "expo-doctor",
     "build:android:dev": "eas build -p android --profile development",
     "build:android:preview": "eas build -p android --profile preview",
-    "build:android:prod": "eas build -p android --profile production"
+    "build:android:prod": "eas build -p android --profile production",
+    "submit:android": "eas submit -p android --profile production --latest"
   },
   "dependencies": {
     "@expo/metro-runtime": "6.1.2",

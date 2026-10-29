@@ -75,6 +75,9 @@ Ou avec EAS (dans le cloud) : `yarn build:android:dev` (APK de développement), 
 (APK à partager), `yarn build:android:prod` (AAB pour Google Play). Les profils EAS pointent vers
 `https://api.tuntransport.academy` (voir `eas.json`).
 
+Publication sur Google Play : tout est dans [`store/`](store/README.md) (images, textes FR/EN/AR, formulaires de la
+Play Console, procédure pas à pas). Envoi automatique d'un AAB en test interne : `yarn submit:android`.
+
 Version web, pratique pour tester l'interface : `yarn web` (le partage marche tant que la page reste ouverte).
 
 Vérifications : `yarn typecheck` et `yarn lint`.
