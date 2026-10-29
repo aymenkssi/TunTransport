@@ -17,7 +17,7 @@ Ce dossier contient tout ce qu'il faut pour publier l'application : les images d
 
 ## 0. Avant de commencer
 
-- [ ] **Politique de confidentialité** : dans `deploy/site/privacy.html`, remplacer `[NOM DU RESPONSABLE]` et `[ADRESSE E-MAIL DE CONTACT]`, puis mettre le site à jour sur le VPS (`cd ~/TunTransport && git pull && cd deploy && docker compose up -d --build`).
+- [x] **Politique de confidentialité** : responsable (Aymen Dridi) et contact (contact@tuntransport.academy) renseignés. Mettre le site à jour sur le VPS : `cd /opt/apps/TunTransport && git pull`.
 - [ ] Vérifier que ces adresses répondent :
   - https://tuntransport.academy/privacy (politique de confidentialité, obligatoire)
   - https://tuntransport.academy/app-ads.txt (doit contenir `google.com, pub-7488746561313974, DIRECT, f08c47fec0942fa0`)
