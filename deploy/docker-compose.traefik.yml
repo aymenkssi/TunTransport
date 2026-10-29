@@ -31,6 +31,9 @@ services:
       DB_NAME: tuntransport
       NETWORK_FILE: /app/data/network.json
       PLACES_FILE: /app/data/places.json
+      # Car and walking routes: public FOSSGIS servers unless a self-hosted OSRM is configured.
+      OSRM_CAR_URL: ${OSRM_CAR_URL:-https://routing.openstreetmap.de/routed-car}
+      OSRM_FOOT_URL: ${OSRM_FOOT_URL:-https://routing.openstreetmap.de/routed-foot}
       ADMIN_TOKEN: ${ADMIN_TOKEN}
     volumes:
       - ./data:/app/data:ro
@@ -47,6 +50,24 @@ services:
       - traefik.http.middlewares.tt-headers.headers.stsSeconds=31536000
       - traefik.http.middlewares.tt-headers.headers.contentTypeNosniff=true
       - traefik.http.middlewares.tt-body-limit.buffering.maxRequestBodyBytes=65536
+
+  # Optional (COMPOSE_PROFILES=osrm, after ./setup-osrm.sh): self-hosted car and walking routes.
+  osrm-car:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    profiles: ["osrm"]
+    restart: unless-stopped
+    command: osrm-routed --algorithm mld /data/tunisia.osrm
+    volumes:
+      - ./osrm/car:/data:ro
+    networks: [internal]
+  osrm-foot:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    profiles: ["osrm"]
+    restart: unless-stopped
+    command: osrm-routed --algorithm mld /data/tunisia.osrm
+    volumes:
+      - ./osrm/foot:/data:ro
+    networks: [internal]
 
   site:
     image: nginx:1.27-alpine

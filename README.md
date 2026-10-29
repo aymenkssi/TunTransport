@@ -83,7 +83,7 @@ Vérifications : `yarn typecheck` et `yarn lint`.
 
 - **Carte en direct** (écran d'accueil) : tous les véhicules partagés sur le réseau, à la couleur et au numéro de
   leur ligne, filtre par mode, position de l'utilisateur ; toucher un véhicule ouvre sa fiche et sa ligne.
-- **Itinéraire** : départ et arrivée (arrêt, adresse ou lieu OpenStreetMap, ma position ou point sur la carte), jusqu'à 3 propositions avec
+- **Itinéraire** (en transports, en voiture ou à pied) : départ et arrivée (arrêt, adresse ou lieu OpenStreetMap, ma position ou point sur la carte), jusqu'à 3 propositions avec
   marche, correspondances, heures et attentes (« en direct » quand un passager partage le véhicule).
 - **Lignes** : 228 lignes (7 métro, 3 RFR, 29 train, 189 bus), recherche, filtre par mode, nombre de
   véhicules en direct par ligne.

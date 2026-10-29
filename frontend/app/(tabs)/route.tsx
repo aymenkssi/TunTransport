@@ -6,7 +6,20 @@ import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { Itinerary, Leg, lineLabel, PlaceHit, PlanPlace, planRoute, searchPlaces, searchStops, StopHit } from "@/src/api/network";
+import {
+  Itinerary,
+  Leg,
+  lineLabel,
+  PlaceHit,
+  PlanPlace,
+  planRoute,
+  RoadMode,
+  roadRoute,
+  RoadRoute,
+  searchPlaces,
+  searchStops,
+  StopHit,
+} from "@/src/api/network";
 import AdBanner from "@/src/ads/AdBanner";
 import { LineBadge } from "@/src/components/LineBadge";
 import { LineMap } from "@/src/components/LineMap";
@@ -18,6 +31,14 @@ type Field = "origin" | "destination";
 type Place = PlanPlace & { lat: number; lon: number };
 
 const WALK_COLOR = "#6B7280";
+const CAR_COLOR = "#2563EB";
+
+type TravelMode = "transit" | RoadMode;
+const TRAVEL_MODES: { key: TravelMode; label: string; icon: "bus" | "car" | "walk" }[] = [
+  { key: "transit", label: "Transports", icon: "bus" },
+  { key: "car", label: "Voiture", icon: "car" },
+  { key: "foot", label: "À pied", icon: "walk" },
+];
 
 type DepartChoice = { label: string; at: () => number | null };
 const tomorrowAt = (h: number) => () => {
@@ -47,7 +68,10 @@ function dayLabel(date: string): string | null {
   const [y, m, d] = date.split("-");
   return `Le ${d}/${m}${y === String(today.getFullYear()) ? "" : `/${y}`}`;
 }
-const minutes = (s: number) => `${Math.max(1, Math.round(s / 60))} min`;
+const minutes = (s: number) => {
+  const m = Math.max(1, Math.round(s / 60));
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}`;
+};
 
 export default function RouteScreen() {
   const colors = useColors();
@@ -66,6 +90,8 @@ export default function RouteScreen() {
   const [selected, setSelected] = useState(0);
   const [locError, setLocError] = useState(false);
   const [departChoice, setDepartChoice] = useState(0);
+  const [travelMode, setTravelMode] = useState<TravelMode>("transit");
+  const [road, setRoad] = useState<RoadRoute | null>(null);
   const [choosingTime, setChoosingTime] = useState(false);
 
   const setPlace = useCallback((field: Field, place: Place) => {
@@ -109,14 +135,25 @@ export default function RouteScreen() {
     let cancelled = false;
     setLoading(true);
     setFailed(false);
-    planRoute(origin, destination, DEPART_CHOICES[departChoice].at())
-      .then((r) => !cancelled && (setResults(r), setSelected(0)))
-      .catch(() => !cancelled && (setResults(null), setFailed(true)))
-      .finally(() => !cancelled && setLoading(false));
+    const departAt = DEPART_CHOICES[departChoice].at();
+    const done = () => !cancelled && setLoading(false);
+    if (travelMode === "transit") {
+      setRoad(null);
+      planRoute(origin, destination, departAt)
+        .then((r) => !cancelled && (setResults(r), setSelected(0)))
+        .catch(() => !cancelled && (setResults(null), setFailed(true)))
+        .finally(done);
+    } else {
+      setResults(null);
+      roadRoute(origin, destination, travelMode, departAt)
+        .then((r) => !cancelled && setRoad(r))
+        .catch(() => !cancelled && (setRoad(null), setFailed(true)))
+        .finally(done);
+    }
     return () => {
       cancelled = true;
     };
-  }, [origin, destination, departChoice]);
+  }, [origin, destination, departChoice, travelMode]);
 
   const pickMyPosition = async (field: Field) => {
     setLocError(false);
@@ -143,26 +180,31 @@ export default function RouteScreen() {
     [picking, setPlace],
   );
 
-  const itinerary = results?.[selected];
+  const itinerary = travelMode === "transit" ? results?.[selected] : undefined;
   const mapData = useMemo<MapData>(
     () => ({
-      fitKey: itinerary ? `${origin?.lat},${origin?.lon}>${destination?.lat},${destination?.lon}#${selected}` : "none",
+      fitKey:
+        itinerary || road
+          ? `${origin?.lat},${origin?.lon}>${destination?.lat},${destination?.lon}#${travelMode}${selected}`
+          : "none",
       color: colors.brand,
       dashed: false,
       shape: [],
       stops: [],
       vehicles: [],
-      paths: (itinerary?.legs ?? []).map((leg) => ({
-        coords: leg.path,
-        color: leg.kind === "walk" ? WALK_COLOR : leg.line?.color || modeColors[leg.line?.mode ?? "bus"],
-        dashed: leg.kind === "walk",
-      })),
+      paths: road
+        ? [{ coords: road.path, color: road.mode === "car" ? CAR_COLOR : WALK_COLOR, dashed: road.mode === "foot" }]
+        : (itinerary?.legs ?? []).map((leg) => ({
+            coords: leg.path,
+            color: leg.kind === "walk" ? WALK_COLOR : leg.line?.color || modeColors[leg.line?.mode ?? "bus"],
+            dashed: leg.kind === "walk",
+          })),
       markers: [
         ...(origin ? [{ lat: origin.lat, lon: origin.lon, label: "A", color: "#047857" }] : []),
         ...(destination ? [{ lat: destination.lat, lon: destination.lon, label: "B", color: "#B91C1C" }] : []),
       ],
     }),
-    [itinerary, origin, destination, selected, colors.brand],
+    [itinerary, road, travelMode, origin, destination, selected, colors.brand],
   );
 
   const fieldRow = (field: Field, place: Place | null) => (
@@ -208,6 +250,21 @@ export default function RouteScreen() {
           <Ionicons name="swap-vertical" size={22} color={colors.onSurface} />
         </Pressable>
       </View>
+      {!editing && (
+        <View style={styles.modes}>
+          {TRAVEL_MODES.map((m) => (
+            <Pressable
+              key={m.key}
+              style={[styles.mode, travelMode === m.key && styles.modeActive]}
+              onPress={() => setTravelMode(m.key)}
+              accessibilityState={{ selected: travelMode === m.key }}
+            >
+              <Ionicons name={m.icon} size={16} color={travelMode === m.key ? colors.surface : colors.onSurface} />
+              <Text style={[styles.modeText, travelMode === m.key && styles.modeTextActive]}>{m.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
       {!editing && (
         <View style={styles.timeRow}>
           <Pressable style={styles.timeButton} onPress={() => setChoosingTime((v) => !v)} accessibilityLabel="Heure de départ">
@@ -319,7 +376,13 @@ export default function RouteScreen() {
             ) : loading ? (
               <ActivityIndicator color={colors.brand} />
             ) : failed ? (
-              <Text style={styles.error}>Le serveur ne répond pas. Réessayez dans un instant.</Text>
+              <Text style={styles.error}>
+                {travelMode === "transit"
+                  ? "Le serveur ne répond pas. Réessayez dans un instant."
+                  : "Calcul d’itinéraire indisponible pour le moment, ou aucun chemin entre ces deux points."}
+              </Text>
+            ) : road ? (
+              <RoadCard road={road} styles={styles} colors={colors} />
             ) : results && results.length === 0 ? (
               <Text style={styles.hint}>Aucun trajet trouvé : le départ ou l’arrivée est à plus de 1,2 km à pied d’un arrêt desservi. Essayez un point plus proche d’une ligne.</Text>
             ) : (
@@ -369,7 +432,7 @@ export default function RouteScreen() {
               ))}
               </>
             )}
-            {results && results.length > 0 && (
+            {travelMode === "transit" && results && results.length > 0 && (
               <Text style={styles.note}>
                 Trains et RFR : horaires officiels. Métro et bus : attente estimée d’après la fréquence habituelle, ou « en direct » quand un passager partage le véhicule.
               </Text>
@@ -378,6 +441,38 @@ export default function RouteScreen() {
           <AdBanner />
         </>
       )}
+    </View>
+  );
+}
+
+function RoadCard({ road, styles, colors }: { road: RoadRoute; styles: Styles; colors: Colors }) {
+  const day = dayLabel(road.date);
+  return (
+    <View style={[styles.card, styles.cardSelected]}>
+      <View style={styles.cardHead}>
+        <Ionicons name={road.mode === "car" ? "car" : "walk"} size={22} color={colors.onSurface} />
+        <Text style={styles.duration}>{minutes(road.duration_s)}</Text>
+        <Text style={styles.times}>
+          {day ? `${day} ` : ""}
+          {road.depart} → {road.arrive}
+        </Text>
+      </View>
+      <Text style={styles.sub}>
+        {formatDistance(road.distance_m)}
+        {road.mode === "car" ? " · durée sans trafic : comptez plus aux heures de pointe" : " · à pied, environ 5 km/h"}
+      </Text>
+      <View style={styles.steps}>
+        {road.steps.map((s, k) => (
+          <View key={k} style={styles.step}>
+            <Ionicons name={k === road.steps.length - 1 ? "flag" : "arrow-forward"} size={16} color={colors.onSurfaceSecondary} />
+            <View style={styles.stepBody}>
+              <Text style={styles.stepText}>{s.instruction}</Text>
+              {s.distance_m > 0 && <Text style={styles.stepWait}>{formatDistance(s.distance_m)}</Text>}
+            </View>
+          </View>
+        ))}
+      </View>
+      <Text style={styles.credit}>Itinéraire © contributeurs OpenStreetMap (OSRM)</Text>
     </View>
   );
 }
@@ -478,6 +573,14 @@ const makeStyles = (c: Colors) =>
     stepWait: { color: c.onSurfaceSecondary, fontSize: type.sm },
     link: { color: c.info, fontSize: type.sm, fontWeight: "600", marginTop: 2 },
     note: { color: c.onSurfaceSecondary, fontSize: type.sm, lineHeight: 18 },
+    modes: { flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
+    mode: {
+      flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+      paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: c.border,
+    },
+    modeActive: { backgroundColor: c.onSurface, borderColor: c.onSurface },
+    modeText: { color: c.onSurface, fontSize: type.sm, fontWeight: "700" },
+    modeTextActive: { color: c.surface },
     timeRow: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm, gap: spacing.sm },
     timeButton: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", paddingVertical: 4 },
     timeText: { color: c.onSurface, fontSize: type.base, fontWeight: "600" },

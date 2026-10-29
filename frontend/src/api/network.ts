@@ -141,3 +141,23 @@ export type PlaceHit = {
  * without it, the server may also ask Nominatim (whole country), so call it on submit only. */
 export const searchPlaces = (q: string, autocomplete = false) =>
   request<PlaceHit[]>(`/places/search?q=${encodeURIComponent(q)}${autocomplete ? "&autocomplete=true" : ""}`);
+
+export type RoadMode = "car" | "foot";
+export type RoadStep = { instruction: string; distance_m: number; duration_s: number };
+export type RoadRoute = {
+  mode: RoadMode;
+  distance_m: number;
+  duration_s: number;
+  depart: string;
+  arrive: string;
+  date: string;
+  path: [number, number][];
+  steps: RoadStep[];
+};
+
+/** Car or walking route (OSRM, OpenStreetMap). Car durations ignore traffic. */
+export const roadRoute = (origin: PlanPlace, destination: PlanPlace, mode: RoadMode, departAt?: number | null) =>
+  request<RoadRoute>("/routes/road", {
+    method: "POST",
+    body: JSON.stringify({ origin, destination, mode, ...(departAt ? { depart_at: departAt } : {}) }),
+  });

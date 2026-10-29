@@ -13,6 +13,7 @@ import admin
 import geocoder
 import network
 import places
+import roads
 import routing
 import trips
 import trust
@@ -60,6 +61,7 @@ app.include_router(network.router)
 app.include_router(trips.router)
 app.include_router(routing.router)
 app.include_router(places.router)
+app.include_router(roads.router)
 app.include_router(trust.router)
 app.include_router(admin.admin)
 app.include_router(admin.admin_page)
