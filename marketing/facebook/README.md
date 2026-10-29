@@ -19,7 +19,7 @@ Avant la sortie sur Google Play :
 ```
 🚌🚇 Où est mon bus ? Quand arrive le métro ?
 
-Découvrez TransTunisLive, le « Waze » des transports en commun du Grand Tunis : les voyageurs à bord partagent la position du véhicule, et tout le monde le voit avancer sur la carte, en temps réel.
+Découvrez TransTunisLive, l'application collaborative des transports en commun du Grand Tunis : les voyageurs à bord partagent la position du véhicule, et tout le monde le voit avancer sur la carte, en temps réel.
 
 ✅ Bus, métro léger, TGM, RFR et trains en direct sur la carte
 ⏱️ L'heure d'arrivée du prochain véhicule à votre arrêt
@@ -36,7 +36,7 @@ Plus il y a de voyageurs qui partagent, plus l'application est précise : parlez
 
 🚌🚇 أين الحافلة؟ متى يصل المترو؟
 
-اكتشفوا TransTunisLive، تطبيق «Waze» للنقل العمومي في تونس الكبرى: الركاب على متن العربة يشاركون موقعها، والجميع يراها تتقدم على الخريطة مباشرة.
+اكتشفوا TransTunisLive، التطبيق التشاركي للنقل العمومي في تونس الكبرى: الركاب على متن العربة يشاركون موقعها، والجميع يراها تتقدم على الخريطة مباشرة.
 
 ✅ الحافلات والمترو الخفيف و TGM و RFR والقطارات مباشرة على الخريطة
 ⏱️ موعد وصول العربة القادمة إلى محطتك

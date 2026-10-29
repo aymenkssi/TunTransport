@@ -45,9 +45,9 @@ Sur la page : **Paramètres** (ou **⋯ → Paramètres**).
 
 ### Texte « À propos »
 ```
-TransTunisLive est le « Waze » des transports en commun du Grand Tunis : les voyageurs à bord partagent la position du bus, du métro, du TGM ou du train, et tout le monde le voit avancer sur la carte en temps réel. Itinéraires avec correspondances, heure d'arrivée à votre arrêt, recherche d'adresse. Gratuit, sans compte.
+TransTunisLive est l'application collaborative des transports en commun du Grand Tunis : les voyageurs à bord partagent la position du bus, du métro, du TGM ou du train, et tout le monde le voit avancer sur la carte en temps réel. Itinéraires avec correspondances, heure d'arrivée à votre arrêt, recherche d'adresse. Gratuit, sans compte.
 
-TransTunisLive هو «Waze» النقل العمومي في تونس الكبرى: الركاب على متن العربة يشاركون موقعها، والجميع يراها على الخريطة مباشرة. مجاني وبدون حساب.
+TransTunisLive هو التطبيق التشاركي للنقل العمومي في تونس الكبرى: الركاب على متن العربة يشاركون موقعها، والجميع يراها على الخريطة مباشرة. مجاني وبدون حساب.
 
 Application indépendante, non affiliée à la Transtu ni à la SNCFT. تطبيق مستقل، غير تابع لشركة النقل بتونس ولا للشركة الوطنية للسكك الحديدية.
 ```

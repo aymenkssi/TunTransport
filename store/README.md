@@ -176,7 +176,7 @@ Bus, métro, TGM et trains de Tunis en temps réel, partagés par les voyageurs.
 
 **Description complète** (4000 caractères max) :
 ```
-Où est mon bus ? Quand arrive le métro ? TransTunisLive est le « Waze » des transports en commun du Grand Tunis : les voyageurs à bord partagent la position du véhicule, et tout le monde le voit avancer sur la carte en temps réel.
+Où est mon bus ? Quand arrive le métro ? TransTunisLive est l'application collaborative des transports en commun du Grand Tunis : les voyageurs à bord partagent la position du véhicule, et tout le monde le voit avancer sur la carte en temps réel.
 
 • CARTE EN DIRECT : bus, métro léger, TGM, RFR et trains qui roulent en ce moment, avec la ligne, la direction, la vitesse et le nombre de passagers qui les confirment.
 • ARRIVÉES À VOTRE ARRÊT : touchez un arrêt pour savoir dans combien de minutes arrive le prochain véhicule, avec les horaires théoriques quand personne ne partage.
@@ -214,7 +214,7 @@ Tunis buses, metro, TGM and trains in real time, shared by riders.
 
 **Full description**:
 ```
-Where is my bus? When is the metro coming? TransTunisLive is the "Waze" of public transport in Greater Tunis: riders on board share the vehicle's position, and everyone sees it move on the map in real time.
+Where is my bus? When is the metro coming? TransTunisLive is the community-powered public transport app for Greater Tunis: riders on board share the vehicle's position, and everyone sees it move on the map in real time.
 
 • LIVE MAP: buses, light metro, TGM, RFR and trains running right now, with the line, direction, speed and how many riders confirm them.
 • ARRIVALS AT YOUR STOP: tap a stop to see in how many minutes the next vehicle arrives, with timetables when nobody is sharing.
@@ -252,7 +252,7 @@ TransTunisLive: الحافلة والمترو
 
 **الوصف الكامل**:
 ```
-أين الحافلة؟ متى يصل المترو؟ TransTunisLive هو «Waze» النقل العمومي في تونس الكبرى: الركاب على متن العربة يشاركون موقعها، والجميع يراها تتقدم على الخريطة مباشرة.
+أين الحافلة؟ متى يصل المترو؟ TransTunisLive هو التطبيق التشاركي للنقل العمومي في تونس الكبرى: الركاب على متن العربة يشاركون موقعها، والجميع يراها تتقدم على الخريطة مباشرة.
 
 • خريطة مباشرة: الحافلات والمترو الخفيف و TGM و RFR والقطارات التي تسير الآن، مع الخط والاتجاه والسرعة وعدد الركاب الذين يؤكدونها.
 • الوصول إلى محطتك: المس محطة لتعرف بعد كم دقيقة تصل العربة القادمة، مع المواعيد النظرية عندما لا يشارك أحد.
