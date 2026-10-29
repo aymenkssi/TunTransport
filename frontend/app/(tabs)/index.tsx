@@ -10,8 +10,10 @@ import { getLiveVehicles, LiveVehicle, Mode } from "@/src/api/network";
 import { LineBadge } from "@/src/components/LineBadge";
 import { LineMap } from "@/src/components/LineMap";
 import { MapData } from "@/src/components/map-html";
+import { showInterstitialAtBreak } from "@/src/ads";
 import { confirmReport } from "@/src/components/report";
 import { ShareBanner } from "@/src/components/ShareBanner";
+import { getShare } from "@/src/sharing/session";
 import { Colors, modeColors, radius, spacing, type, useColors } from "@/src/theme";
 import { formatAge } from "@/src/utils/format";
 
@@ -162,7 +164,10 @@ export default function LiveMapScreen() {
           <Text style={styles.cardInfo}>
             {STATUS_LABEL[current.status]} · {current.confirmations} passager{current.confirmations > 1 ? "s" : ""} · {Math.round(current.speed_mps * 3.6)} km/h · {formatAge(current.age_s)}
           </Text>
-          <Pressable style={styles.cardButton} onPress={() => router.push(`/line/${current.line_id}`)}>
+          <Pressable
+            style={styles.cardButton}
+            onPress={() => showInterstitialAtBreak(() => router.push(`/line/${current.line_id}`), { sharing: !!getShare() })}
+          >
             <Text style={styles.cardButtonText}>Voir la ligne et les arrivées</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.onBrand} />
           </Pressable>

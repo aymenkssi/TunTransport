@@ -6,6 +6,9 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, Vi
 
 import { backendConfigured } from "@/src/api/client";
 import { getLines, getLive, LineSummary, Mode } from "@/src/api/network";
+import { getShare } from "@/src/sharing/session";
+import AdBanner from "@/src/ads/AdBanner";
+import { showInterstitialAtBreak } from "@/src/ads";
 import { LineBadge } from "@/src/components/LineBadge";
 import { ShareBanner } from "@/src/components/ShareBanner";
 import { Colors, radius, spacing, type, useColors } from "@/src/theme";
@@ -106,7 +109,7 @@ export default function LinesScreen() {
         keyboardShouldPersistTaps="handled"
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         renderItem={({ item }) => (
-          <Pressable style={({ pressed }) => [styles.row, pressed && styles.pressed]} onPress={() => router.push(`/line/${item.id}`)}>
+          <Pressable style={({ pressed }) => [styles.row, pressed && styles.pressed]} onPress={() => showInterstitialAtBreak(() => router.push(`/line/${item.id}`), { sharing: !!getShare() })}>
             <LineBadge line={item} />
             <View style={styles.rowText}>
               <Text style={styles.rowTitle} numberOfLines={1}>{item.long_name}</Text>
@@ -121,6 +124,7 @@ export default function LinesScreen() {
           </Pressable>
         )}
       />
+      <AdBanner />
     </View>
   );
 }

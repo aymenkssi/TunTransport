@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Itinerary, Leg, lineLabel, PlaceHit, PlanPlace, planRoute, searchPlaces, searchStops, StopHit } from "@/src/api/network";
+import AdBanner from "@/src/ads/AdBanner";
 import { LineBadge } from "@/src/components/LineBadge";
 import { LineMap } from "@/src/components/LineMap";
 import { MapData } from "@/src/components/map-html";
@@ -374,6 +375,7 @@ export default function RouteScreen() {
               </Text>
             )}
           </ScrollView>
+          <AdBanner />
         </>
       )}
     </View>

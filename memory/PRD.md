@@ -37,6 +37,9 @@ Collaborative Android app where passengers share the live position of the public
   typo tolerance (1 edit/word), prefix autocomplete, house numbers, aliases (Avicenne = Ibn Sina, roman
   numerals), Arabic names, optional quartier/city words; Nominatim only as a submit-time fallback.
   Photon was evaluated and rejected: no typo tolerance on the test address.
+- [x] AdMob like Neon Strike (react-native-google-mobile-ads 16.0.3, UMP consent, test ads except the EAS
+  production profile): banners under the lines list and itinerary results, interstitial at most 1 in 4 line
+  openings and every 3 min, never while sharing; app-ads.txt; privacy policy updated.
 - [x] App: live map home, journey planner tab, lines list (search, modes, live badges), line screen (map, direction, live vehicles, ETA,
   timetable), trip sharing with auto-stop, about/privacy/delete data.
 

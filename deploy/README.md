@@ -84,9 +84,19 @@ Mise à jour après un `git pull` : `docker compose up -d --build`. Journaux : `
 ## 6. Application et site web
 
 - L'application est déjà branchée sur `https://api.tuntransport.academy` pour tous les profils de build (`frontend/eas.json`).
-- **Site** (`deploy/site/`) : page d'accueil et politique de confidentialité sur `https://tuntransport.academy/privacy`. **Avant la mise en ligne**, remplacez `[NOM DU RESPONSABLE]` et `[ADRESSE E-MAIL DE CONTACT]` dans `privacy.html` et `index.html`.
+- **Site** (`deploy/site/`) : page d'accueil, `app-ads.txt` pour AdMob (`https://tuntransport.academy/app-ads.txt`) et politique de confidentialité sur `https://tuntransport.academy/privacy`. **Avant la mise en ligne**, remplacez `[NOM DU RESPONSABLE]` et `[ADRESSE E-MAIL DE CONTACT]` dans `privacy.html` et `index.html`.
 - **Play Console** → Fiche du Store : site `https://tuntransport.academy`, règles de confidentialité `https://tuntransport.academy/privacy`. Sécurité des données → Suppression : l'utilisateur supprime ses données depuis l'app (À propos → Supprimer mes données).
 - **Play Console → Déclaration de service au premier plan** : l'app utilise un service de type `location` pendant un trajet que l'utilisateur lance lui-même ; elle ne demande pas la localisation en arrière-plan permanente (`ACCESS_BACKGROUND_LOCATION`).
+
+## Publicités (AdMob)
+
+- Application AdMob « tuntransport » : `ca-app-pub-7488746561313974~9155249879` (dans `frontend/app.json`).
+- Unités : bannière `ca-app-pub-7488746561313974/9387631275`, interstitiel `ca-app-pub-7488746561313974/9555152238` (dans `frontend/src/ads/index.ts`).
+- Les builds `development` et `preview` affichent les **annonces de test** de Google ; seul le profil EAS `production` active les vraies (`EXPO_PUBLIC_AD_MODE=production`). Ne cliquez jamais sur vos propres annonces réelles.
+- Emplacements : bannière sous la liste des lignes et sous les résultats d'itinéraire ; interstitiel au plus une fois sur 4 ouvertures de ligne et toutes les 3 minutes, jamais pendant un partage de trajet ; rien sur la carte en direct ni sur l'écran de partage.
+- Consentement RGPD : configurez le message dans **AdMob → Confidentialité et messages** ; l'app l'affiche quand la loi l'exige et propose « Confidentialité des annonces » dans À propos.
+- **Statut « Requires review »** : AdMob examine l'application quand vous la reliez à sa fiche Google Play (**App settings → App store details → Add**), une fois l'app publiée (même en test interne). En attendant, les annonces réelles peuvent être limitées.
+- AdMob vérifie `https://tuntransport.academy/app-ads.txt` (sous 24 h environ), à condition que ce site soit renseigné comme site du développeur dans la fiche Play Store.
 
 ## 7. Administration
 

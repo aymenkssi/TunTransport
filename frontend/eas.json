@@ -34,7 +34,8 @@
       },
       "env": {
         "EXPO_PUBLIC_BACKEND_URL": "https://api.tuntransport.academy",
-        "EXPO_PUBLIC_SITE_URL": "https://tuntransport.academy"
+        "EXPO_PUBLIC_SITE_URL": "https://tuntransport.academy",
+        "EXPO_PUBLIC_AD_MODE": "production"
       },
       "node": "22.14.0"
     }

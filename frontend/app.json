@@ -48,7 +48,16 @@
           "isIosBackgroundLocationEnabled": true
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-7488746561313974~9155249879",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+          "delayAppMeasurementInit": true,
+          "userTrackingUsageDescription": "Cet identifiant permet d’afficher des publicités plus pertinentes."
+        }
+      ]
     ]
   }
 }

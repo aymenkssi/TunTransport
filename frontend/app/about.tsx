@@ -3,6 +3,7 @@ import * as Linking from "expo-linking";
 import { useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text } from "react-native";
 
+import { isPrivacyOptionsRequired, showPrivacyOptions } from "@/src/ads";
 import { deleteMyData } from "@/src/api/client";
 import { stopSharing } from "@/src/sharing/session";
 import { Colors, radius, spacing, type, useColors } from "@/src/theme";
@@ -49,6 +50,8 @@ export default function AboutScreen() {
         • Vos coordonnées GPS ne sont pas enregistrées : le serveur ne garde que la position du véhicule le long de la
         ligne, effacée 5 minutes après la dernière mise à jour.{"\n"}
         • Aucun compte, aucun nom, aucun e-mail : un identifiant anonyme est créé sur votre téléphone.{"\n"}
+        • L’application est gratuite grâce à des publicités Google AdMob. Votre position n’est jamais transmise
+        à la régie publicitaire.{"\n"}
         • Contre les fausses déclarations, le serveur vérifie que le véhicule avance vraiment sur la ligne (pas à
         pied, pas immobile, pas de position simulée) et tient compte des confirmations et des signalements des
         autres voyageurs.
@@ -58,6 +61,11 @@ export default function AboutScreen() {
           <Text style={styles.link}>Politique de confidentialité complète</Text>
         </Pressable>
       ) : null}
+      {isPrivacyOptionsRequired() && (
+        <Pressable onPress={showPrivacyOptions}>
+          <Text style={styles.link}>Confidentialité des annonces</Text>
+        </Pressable>
+      )}
       <Pressable style={[styles.danger, busy && styles.disabled]} onPress={confirm} disabled={busy}>
         <Text style={styles.dangerText}>Supprimer mes données</Text>
       </Pressable>

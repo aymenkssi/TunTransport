@@ -12,7 +12,7 @@
 	}
 }
 
-# Website: home page and the privacy policy (required by Google Play).
+# Website: home page, app-ads.txt (required by AdMob) and the privacy policy (required by Google Play).
 {$SITE_DOMAIN}, www.{$SITE_DOMAIN} {
 	encode gzip
 	root * /srv/site
