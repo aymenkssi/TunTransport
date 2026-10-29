@@ -23,7 +23,7 @@ Depuis ton compte Facebook personnel (il devient administrateur ; ton nom n'appa
    - **Photo de couverture** : `photo-couverture-1640x624.jpg`
 4. Coordonnées :
    - Site web : `https://tuntransport.academy`
-   - E-mail : l'adresse de contact (la même que sur Google Play)
+   - E-mail : `contact@tuntransport.academy`
    - Téléphone, adresse, horaires : **laisser vide / « Aucun horaire »** (c'est une application, pas un commerce)
 5. Les étapes « Connecter WhatsApp » et « Inviter des amis » peuvent être passées, puis faites plus tard.
 

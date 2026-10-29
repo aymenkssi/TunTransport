@@ -57,7 +57,7 @@ https://tuntransport.academy/privacy
 **Oui, mon application contient des annonces** (AdMob : bannières et interstitiels).
 
 ### Classification du contenu (questionnaire IARC)
-- Adresse e-mail : l'adresse de contact.
+- Adresse e-mail : `contact@tuntransport.academy`.
 - Catégorie : **Toutes les autres catégories d'applications** (ni jeu, ni réseau social).
 - Réponses :
   - Violence, sexualité, langage grossier, drogues, jeux d'argent : **Non** partout.
@@ -153,7 +153,7 @@ Play Console → **Croissance → Présence sur le Store → Fiche principale du
 ### Coordonnées
 | Champ | Valeur |
 |---|---|
-| Adresse e-mail | l'adresse de contact |
+| Adresse e-mail | `contact@tuntransport.academy` |
 | Site web | `https://tuntransport.academy` |
 | Téléphone | facultatif (laisser vide) |
 
