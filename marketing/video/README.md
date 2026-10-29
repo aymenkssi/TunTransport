@@ -1,16 +1,22 @@
-# Vidéo de présentation : voix arabe, sous-titres français
+# Vidéos de présentation
+
+Deux versions, avec les mêmes images :
+- **voix arabe, sous-titres français** : `transtunislive-presentation-ar-fr.mp4` (2 min 40)
+- **voix française, sous-titres arabes** : `transtunislive-presentation-fr-ar.mp4` (2 min 37), titres des écrans en français
 
 | Fichier | Usage |
 |---|---|
 | `transtunislive-presentation-ar-fr.mp4` | La vidéo (1080 × 1920, vertical, 2 min 40), sous-titres français incrustés |
 | `transtunislive-presentation-ar-fr.fr_FR.srt` | Les sous-titres seuls, à ajouter sur Facebook/YouTube si besoin |
+| `transtunislive-presentation-fr-ar.mp4` | Version voix française, sous-titres arabes incrustés |
+| `transtunislive-presentation-fr-ar.ar_AR.srt` | Ses sous-titres arabes seuls |
 | `miniature.jpg` | Image de couverture |
 
 Format vertical 9:16 : convient aux Reels Facebook et Instagram, aux Shorts YouTube (moins de 3 min) et aux statuts WhatsApp (à découper en tranches de 60 s si nécessaire). Les sous-titres sont déjà dans l'image : ne pas ajouter le fichier `.srt` en plus sur Facebook, sinon ils apparaissent deux fois.
 
 Comment elle a été faite :
 - Images : la vraie application (version web, même interface que sur Android) filmée écran par écran, avec des véhicules simulés qui roulent sur les lignes.
-- Voix : **voix de synthèse** arabe tunisienne (Microsoft Edge, « ar-TN-Reem »). Pour une version plus naturelle, faire lire le texte arabe ci-dessous par une vraie voix et me l'envoyer : je remplace la piste audio.
+- Voix : **voix de synthèse** (Microsoft Edge) : arabe tunisien « ar-TN-Reem », français « fr-FR-Denise ». Pour une version plus naturelle, faire lire le texte ci-dessous par une vraie voix et me l'envoyer : je remplace la piste audio.
 - Une touche rouge apparaît à chaque appui sur l'écran.
 
 ## Texte (14 fonctionnalités)
