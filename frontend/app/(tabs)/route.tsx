@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import {
   Itinerary,
@@ -88,6 +88,8 @@ export default function RouteScreen() {
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
   const [selected, setSelected] = useState(0);
+  // Enlarged view: the map alone, or the itinerary list alone (the form is hidden in both).
+  const [expanded, setExpanded] = useState<"map" | "list" | null>(null);
   const [locError, setLocError] = useState(false);
   const [departChoice, setDepartChoice] = useState(0);
   const [travelMode, setTravelMode] = useState<TravelMode>("transit");
@@ -180,12 +182,21 @@ export default function RouteScreen() {
     [picking, setPlace],
   );
 
+  useEffect(() => {
+    if (!expanded) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      setExpanded(null);
+      return true;
+    });
+    return () => sub.remove();
+  }, [expanded]);
+
   const itinerary = travelMode === "transit" ? results?.[selected] : undefined;
   const mapData = useMemo<MapData>(
     () => ({
       fitKey:
         itinerary || road
-          ? `${origin?.lat},${origin?.lon}>${destination?.lat},${destination?.lon}#${travelMode}${selected}`
+          ? `${origin?.lat},${origin?.lon}>${destination?.lat},${destination?.lon}#${travelMode}${selected}#${expanded === "map"}`
           : "none",
       color: colors.brand,
       dashed: false,
@@ -241,6 +252,15 @@ export default function RouteScreen() {
 
   return (
     <View style={styles.screen}>
+      {expanded === "list" && (
+        <Pressable style={styles.compactBar} onPress={() => setExpanded(null)} accessibilityLabel="Réduire la liste">
+          <Text style={styles.compactText} numberOfLines={1}>
+            {origin?.name ?? "Départ"} → {destination?.name ?? "Arrivée"}
+          </Text>
+          <Ionicons name="contract" size={18} color={colors.onSurface} />
+        </Pressable>
+      )}
+      {!expanded && (
       <View style={styles.form}>
         <View style={styles.fields}>
           {fieldRow("origin", origin)}
@@ -250,7 +270,8 @@ export default function RouteScreen() {
           <Ionicons name="swap-vertical" size={22} color={colors.onSurface} />
         </Pressable>
       </View>
-      {!editing && (
+      )}
+      {!editing && !expanded && (
         <View style={styles.modes}>
           {TRAVEL_MODES.map((m) => (
             <Pressable
@@ -265,7 +286,7 @@ export default function RouteScreen() {
           ))}
         </View>
       )}
-      {!editing && (
+      {!editing && !expanded && (
         <View style={styles.timeRow}>
           <Pressable style={styles.timeButton} onPress={() => setChoosingTime((v) => !v)} accessibilityLabel="Heure de départ">
             <Ionicons name="time-outline" size={16} color={colors.onSurface} />
@@ -362,14 +383,43 @@ export default function RouteScreen() {
         </ScrollView>
       ) : (
         <>
-          <View style={styles.mapWrap}>
+          <View style={expanded === "map" ? styles.mapFull : expanded === "list" ? styles.mapHidden : styles.mapWrap}>
             <LineMap data={mapData} onPressMap={onPressMap} style={StyleSheet.absoluteFill} />
+            {!picking && expanded !== "list" && (
+              <Pressable
+                style={styles.expandButton}
+                onPress={() => setExpanded(expanded === "map" ? null : "map")}
+                accessibilityLabel={expanded === "map" ? "Réduire la carte" : "Agrandir la carte"}
+                hitSlop={6}
+              >
+                <Ionicons name={expanded === "map" ? "contract" : "expand"} size={20} color={colors.onSurface} />
+              </Pressable>
+            )}
+            {expanded === "map" && (itinerary || road) && (
+              <Pressable style={styles.stepsButton} onPress={() => setExpanded("list")}>
+                <Ionicons name="list" size={18} color={colors.surface} />
+                <Text style={styles.stepsButtonText}>Voir les étapes</Text>
+              </Pressable>
+            )}
             {picking && (
               <View style={styles.pickBanner}>
                 <Text style={styles.pickText}>Touchez la carte pour choisir {picking === "origin" ? "le départ" : "l’arrivée"}</Text>
               </View>
             )}
           </View>
+          {expanded !== "map" && (
+          <>
+          {origin && destination && !loading && (results?.length || road) ? (
+            <Pressable
+              style={styles.resultsHandle}
+              onPress={() => setExpanded(expanded === "list" ? null : "list")}
+              accessibilityLabel={expanded === "list" ? "Réduire la liste" : "Agrandir la liste"}
+            >
+              <View style={styles.handleBar} />
+              <Ionicons name={expanded === "list" ? "chevron-down" : "chevron-up"} size={16} color={colors.onSurfaceSecondary} />
+              <Text style={styles.handleText}>{expanded === "list" ? "Réduire" : "Agrandir"}</Text>
+            </Pressable>
+          ) : null}
           <ScrollView style={styles.results} contentContainerStyle={styles.resultsContent}>
             {!origin || !destination ? (
               <Text style={styles.hint}>Choisissez un départ et une arrivée : un arrêt, votre position ou un point sur la carte.</Text>
@@ -438,6 +488,8 @@ export default function RouteScreen() {
               </Text>
             )}
           </ScrollView>
+          </>
+          )}
           <AdBanner />
         </>
       )}
@@ -546,6 +598,29 @@ const makeStyles = (c: Colors) =>
     credit: { color: c.onSurfaceSecondary, fontSize: 11, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
     cancelText: { color: c.info, fontWeight: "600", fontSize: type.base },
     mapWrap: { height: 260 },
+    mapFull: { flex: 1 },
+    mapHidden: { height: 0, overflow: "hidden" },
+    expandButton: {
+      position: "absolute", top: spacing.sm, right: spacing.sm, width: 40, height: 40, borderRadius: 20,
+      alignItems: "center", justifyContent: "center", backgroundColor: c.surface, elevation: 3,
+      shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
+    },
+    stepsButton: {
+      position: "absolute", bottom: 72, alignSelf: "center", flexDirection: "row", alignItems: "center", gap: 6,
+      backgroundColor: c.onSurface, paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2, borderRadius: radius.pill, elevation: 3,
+    },
+    stepsButtonText: { color: c.surface, fontWeight: "700", fontSize: type.base },
+    compactBar: {
+      flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2,
+      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border,
+    },
+    compactText: { flex: 1, color: c.onSurface, fontSize: type.base, fontWeight: "600" },
+    resultsHandle: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 6,
+      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border,
+    },
+    handleBar: { position: "absolute", top: 3, width: 36, height: 4, borderRadius: 2, backgroundColor: c.border },
+    handleText: { color: c.onSurfaceSecondary, fontSize: type.sm, fontWeight: "600" },
     pickBanner: { position: "absolute", top: spacing.sm, left: spacing.md, right: spacing.md, backgroundColor: c.onSurface, borderRadius: radius.md, padding: spacing.sm + 2 },
     pickText: { color: c.surface, fontWeight: "600", textAlign: "center" },
     results: { flex: 1 },

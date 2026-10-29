@@ -111,7 +111,8 @@ function apply(d) {
     lastFit = d.fitKey;
     var b = new maplibregl.LngLatBounds();
     pts.forEach(function (p) { b.extend([p[1], p[0]]); });
-    map.fitBounds(b, { padding: 50, duration: 600, maxZoom: 16 });
+    // The map may just have been resized (expanded/collapsed): let the WebView settle first.
+    setTimeout(function () { map.resize(); map.fitBounds(b, { padding: 50, duration: 600, maxZoom: 16 }); }, 150);
   }
   if (d.center && d.center.key !== lastCenter) {
     lastCenter = d.center.key;
