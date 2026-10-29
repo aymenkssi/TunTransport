@@ -123,7 +123,7 @@ L'application utilise un **service de premier plan de type `location`** pour env
   1. Ouvrir l'application, onglet Lignes, ouvrir une ligne (par exemple Métro 1).
   2. Toucher **« Je suis dans ce véhicule »**, accepter la localisation « Pendant l'utilisation de l'application », puis **autoriser les notifications**.
   3. Montrer le bandeau « Vous partagez… » et la **notification « Partage de trajet actif »** dans le volet.
-  4. Verrouiller l'écran quelques secondes, le déverrouiller : le partage continue.
+  4. Appuyer sur **Accueil** (l'application passe en arrière-plan), ouvrir une autre application, dérouler le volet : la notification est toujours là, le partage continue. (Ne pas verrouiller l'écran : sur la plupart des téléphones, cela arrête l'enregistreur d'écran.)
   5. Toucher **« Arrêter le partage »** : la notification disparaît.
 
 ### Autorisations de localisation
