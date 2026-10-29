@@ -2,7 +2,7 @@
 // and the server publishes the vehicle only once the trace matches that line.
 // State is persisted so the background location task can resume it after the JS context restarts.
 import * as Location from "expo-location";
-import { Platform } from "react-native";
+import { PermissionsAndroid, Platform } from "react-native";
 
 import { ApiError } from "@/src/api/client";
 import { endTrip, Fix, LineSummary, lineLabel, postPositions, startTrip } from "@/src/api/network";
@@ -110,6 +110,10 @@ async function stopUpdates(): Promise<void> {
 export async function startSharing(line: LineSummary, direction: number): Promise<StartResult> {
   const permission = await Location.requestForegroundPermissionsAsync();
   if (!permission.granted) return "denied";
+  // Android 13+: without this permission the foreground service runs but its notification stays hidden.
+  if (Platform.OS === "android" && Number(Platform.Version) >= 33) {
+    await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS).catch(() => null);
+  }
   if (state) await stopSharing();
   try {
     const trip = await startTrip(line.id, direction);

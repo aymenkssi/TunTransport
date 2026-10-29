@@ -121,7 +121,7 @@ L'application utilise un **service de premier plan de type `location`** pour env
   ```
 - **Lien vers une vidéo** (YouTube, en « non répertoriée », 30 à 60 s), filmée sur un vrai téléphone :
   1. Ouvrir l'application, onglet Lignes, ouvrir une ligne (par exemple Métro 1).
-  2. Toucher **« Je suis dans ce véhicule »**, accepter la localisation « Pendant l'utilisation de l'application ».
+  2. Toucher **« Je suis dans ce véhicule »**, accepter la localisation « Pendant l'utilisation de l'application », puis **autoriser les notifications**.
   3. Montrer le bandeau « Vous partagez… » et la **notification « Partage de trajet actif »** dans le volet.
   4. Verrouiller l'écran quelques secondes, le déverrouiller : le partage continue.
   5. Toucher **« Arrêter le partage »** : la notification disparaît.
@@ -129,7 +129,7 @@ L'application utilise un **service de premier plan de type `location`** pour env
 ### Autorisations de localisation
 L'application ne demande **pas** la localisation en arrière-plan : aucune déclaration « Accès à la position en arrière-plan » n'est nécessaire. Si la Play Console la demande quand même, c'est qu'un AAB contient `ACCESS_BACKGROUND_LOCATION` : ce ne doit pas être le cas (voir `frontend/app.json`, `isAndroidBackgroundLocationEnabled: false`).
 
-Permissions Android du build (vérifiées) : `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`, `INTERNET`, `VIBRATE`, et celles ajoutées par AdMob (`AD_ID`, `ACCESS_ADSERVICES_*`, `ACCESS_NETWORK_STATE`, `WAKE_LOCK`). Les permissions inutiles ajoutées par certaines bibliothèques (stockage, superposition d'écran, biométrie) sont retirées par `blockedPermissions` dans `frontend/app.json`.
+Permissions Android du build (vérifiées) : `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`, `POST_NOTIFICATIONS` (demandée au premier partage, pour afficher la notification du service sur Android 13+), `INTERNET`, `VIBRATE`, et celles ajoutées par AdMob (`AD_ID`, `ACCESS_ADSERVICES_*`, `ACCESS_NETWORK_STATE`, `WAKE_LOCK`). Les permissions inutiles ajoutées par certaines bibliothèques (stockage, superposition d'écran, biométrie) sont retirées par `blockedPermissions` dans `frontend/app.json`.
 
 ## 3. Fiche du Store
 
