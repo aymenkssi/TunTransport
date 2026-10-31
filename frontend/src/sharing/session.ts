@@ -6,6 +6,7 @@ import { PermissionsAndroid, Platform } from "react-native";
 
 import { ApiError } from "@/src/api/client";
 import { endTrip, Fix, LineSummary, lineLabel, postPositions, startTrip } from "@/src/api/network";
+import { ensureLocationServices } from "@/src/utils/location";
 import { storage } from "@/src/utils/storage";
 
 export const LOCATION_TASK = "tt-share-location";
@@ -34,7 +35,7 @@ export type ShareState = {
   fixes: Fix[];
 };
 
-export type StartResult = "ok" | "denied" | "error";
+export type StartResult = "ok" | "denied" | "location_off" | "error";
 
 let state: ShareState | null = null;
 let restored = false;
@@ -110,6 +111,7 @@ async function stopUpdates(): Promise<void> {
 export async function startSharing(line: LineSummary, direction: number): Promise<StartResult> {
   const permission = await Location.requestForegroundPermissionsAsync();
   if (!permission.granted) return "denied";
+  if (!(await ensureLocationServices(true))) return "location_off";
   // Android 13+: without this permission the foreground service runs but its notification stays hidden.
   if (Platform.OS === "android" && Number(Platform.Version) >= 33) {
     await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS).catch(() => null);

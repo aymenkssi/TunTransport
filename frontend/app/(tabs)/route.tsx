@@ -1,7 +1,6 @@
 // Journey planner: from a stop, my position or a point on the map, to another one.
 // Waits come from live vehicles when passengers share them, otherwise from timetables or estimates.
 import { Ionicons } from "@expo/vector-icons";
-import * as Location from "expo-location";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -26,6 +25,7 @@ import { LineMap } from "@/src/components/LineMap";
 import { MapData } from "@/src/components/map-html";
 import { Colors, modeColors, radius, spacing, type, useColors } from "@/src/theme";
 import { formatDistance } from "@/src/utils/format";
+import { currentPosition } from "@/src/utils/location";
 
 type Field = "origin" | "destination";
 type Place = PlanPlace & { lat: number; lon: number };
@@ -159,15 +159,12 @@ export default function RouteScreen() {
 
   const pickMyPosition = async (field: Field) => {
     setLocError(false);
-    const permission = await Location.requestForegroundPermissionsAsync();
-    const pos = permission.granted
-      ? await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null)
-      : null;
-    if (!pos) {
+    const here = await currentPosition(true);
+    if (!here) {
       setLocError(true);
       return;
     }
-    setPlace(field, { lat: pos.coords.latitude, lon: pos.coords.longitude, name: "Ma position" });
+    setPlace(field, { ...here, name: "Ma position" });
   };
 
   const swap = () => {
@@ -318,7 +315,7 @@ export default function RouteScreen() {
             <Ionicons name="locate" size={20} color={colors.info} />
             <Text style={styles.suggestionText}>Ma position</Text>
           </Pressable>
-          {locError && <Text style={styles.error}>Position indisponible : autorisez la localisation.</Text>}
+          {locError && <Text style={styles.error}>Position indisponible : autorisez et activez la localisation.</Text>}
           <Pressable
             style={styles.suggestion}
             onPress={() => {

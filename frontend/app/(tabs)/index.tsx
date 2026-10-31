@@ -1,9 +1,8 @@
 // Home: live map of every vehicle shared right now on the network, coloured by line.
 import { Ionicons } from "@expo/vector-icons";
-import * as Location from "expo-location";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { backendConfigured } from "@/src/api/client";
 import { getLiveVehicles, LiveVehicle, Mode } from "@/src/api/network";
@@ -16,6 +15,7 @@ import { ShareBanner } from "@/src/components/ShareBanner";
 import { getShare } from "@/src/sharing/session";
 import { Colors, modeColors, radius, spacing, type, useColors } from "@/src/theme";
 import { formatAge } from "@/src/utils/format";
+import { currentPosition } from "@/src/utils/location";
 
 const REFRESH_MS = 10_000;
 const MODES: { key: Mode | null; label: string }[] = [
@@ -57,18 +57,20 @@ export default function LiveMapScreen() {
   }, [refresh]);
 
   const locate = useCallback(async (ask: boolean) => {
-    const permission = ask ? await Location.requestForegroundPermissionsAsync() : await Location.getForegroundPermissionsAsync();
-    if (!permission.granted) return;
-    const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null);
-    if (!pos) return;
-    const here = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+    const here = await currentPosition(ask);
+    if (!here) return;
     setMe(here);
     setCenter({ key: String(Date.now()), ...here, zoom: 14 });
   }, []);
 
-  // Centre on the user at launch only if location was already allowed: never ask on opening.
+  // Centre on the user at launch only if location was already allowed and on: never ask on opening.
+  // Also when coming back to the app, e.g. after switching location on from the quick settings.
   useEffect(() => {
     locate(false);
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") locate(false);
+    });
+    return () => sub.remove();
   }, [locate]);
 
   const shown = useMemo(() => (vehicles ?? []).filter((v) => !mode || v.mode === mode), [vehicles, mode]);

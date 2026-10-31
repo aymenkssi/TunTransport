@@ -1,9 +1,12 @@
 <fr-FR>
 • Les noms de rues et de lieux en arabe s'affichent maintenant correctement sur la carte.
+• La localisation fonctionne dès qu'elle est activée, sans avoir à relancer l'application.
 </fr-FR>
 <en-US>
 • Arabic street and place names now display correctly on the map.
+• Location works as soon as it is turned on, without restarting the app.
 </en-US>
 <ar>
 • أسماء الشوارع والأماكن بالعربية تظهر الآن بشكل صحيح على الخريطة.
+• تحديد الموقع يعمل فور تفعيله، دون الحاجة لإعادة فتح التطبيق.
 </ar>

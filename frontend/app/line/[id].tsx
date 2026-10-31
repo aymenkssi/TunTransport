@@ -85,6 +85,8 @@ export default function LineScreen() {
     setBusy(false);
     if (result === "denied") {
       Alert.alert("Localisation refusée", "Autorisez la localisation pour partager la position du véhicule.");
+    } else if (result === "location_off") {
+      Alert.alert("Localisation désactivée", "Activez la localisation du téléphone pour partager la position du véhicule.");
     } else if (result === "error") {
       Alert.alert("Partage impossible", "Le serveur ne répond pas. Réessayez dans un instant.");
     }
