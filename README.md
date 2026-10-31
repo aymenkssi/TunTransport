@@ -34,6 +34,11 @@ python3 tools/import_tunismapper.py      # ≈ 4 min la première fois → backe
 python3 tools/import_places.py           # ≈ 1 min → backend/data/places.json (adresses du Grand Tunis, OpenStreetMap)
 ```
 
+Lignes absentes de tunismapper (par exemple le bus 347) : les décrire dans `tools/extra_lines.json`
+(arrêts dans l'ordre, terminus), puis `python3 tools/build_extra_lines.py` calcule le tracé sur les
+routes et écrit `tools/extra_lines.built.json`, que l'import ajoute au réseau. Pour les ajouter à un
+réseau déjà importé sans tout réimporter : `python3 tools/build_extra_lines.py --merge chemin/network.json`.
+
 ## 2. Backend
 
 ```bash

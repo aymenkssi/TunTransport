@@ -254,6 +254,13 @@ def main():
         print(f"\r{n}/{len(ids)}", end="", file=sys.stderr)
     print(file=sys.stderr)
 
+    # Lignes absentes de tunismapper, ajoutées à la main (tools/build_extra_lines.py).
+    extra = ROOT / "tools/extra_lines.built.json"
+    if extra.exists():
+        added = json.loads(extra.read_text(encoding="utf-8"))["lines"]
+        ids = {line["id"] for line in added}
+        lines = [line for line in lines if line["id"] not in ids] + added
+
     args.out.parent.mkdir(parents=True, exist_ok=True)
     network = {"source": f"{BASE}/lignes.php", "generated": time.strftime("%Y-%m-%d"), "lines": lines}
     args.out.write_text(json.dumps(network, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

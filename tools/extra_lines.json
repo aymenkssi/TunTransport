@@ -1,0 +1,24 @@
+{
+  "_comment": "Lignes absentes de tunismapper.com, ajoutées à la main. Arrêts approximatifs (près des stations du TGM), tracé calculé sur la route par tools/build_extra_lines.py. Les corrections des voyageurs arrivent dans l'admin (Suggestions).",
+  "lines": [
+    {
+      "id": "x347",
+      "mode": "bus",
+      "short_name": "347",
+      "long_name": "Tunis Marine - La Marsa (Lycée Gustave Flaubert)",
+      "color": "#0E7490",
+      "operator": "Bus TRANSTU",
+      "headsigns": ["La Marsa", "Tunis Marine"],
+      "stops": [
+        {"name": "Tunis Marine", "lat": 36.800694, "lon": 10.191743},
+        {"name": "La Goulette", "lat": 36.818051, "lon": 10.30194},
+        {"name": "Le Kram", "lat": 36.836171, "lon": 10.316606},
+        {"name": "Salammbô", "lat": 36.841542, "lon": 10.319104},
+        {"name": "Carthage Hannibal", "lat": 36.853391, "lon": 10.328916},
+        {"name": "Amilcar", "lat": 36.866586, "lon": 10.337442},
+        {"name": "Sidi Bou Saïd", "lat": 36.870454, "lon": 10.342126},
+        {"name": "La Marsa - Lycée Gustave Flaubert", "lat": 36.879988, "lon": 10.335394}
+      ]
+    }
+  ]
+}
