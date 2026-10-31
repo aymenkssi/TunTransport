@@ -31,6 +31,11 @@ export const MAP_HTML = `<!doctype html>
 <style>html,body,#map{margin:0;height:100%;width:100%;background:#e5e7eb}</style>
 </head><body><div id="map"></div><script>
 var STATUS = { "fiable": "#047857", "probable": "#1D4ED8", "obsolète": "#9CA3AF" };
+// Arabic labels: without this plugin MapLibre draws them unjoined and left to right.
+try {
+  var rtl = maplibregl.setRTLTextPlugin("https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js", true);
+  if (rtl && rtl.catch) rtl.catch(function () {});
+} catch (err) {}
 var map = new maplibregl.Map({
   container: "map",
   style: "https://tiles.openfreemap.org/styles/liberty",

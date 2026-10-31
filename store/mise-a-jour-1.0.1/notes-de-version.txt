@@ -1,0 +1,9 @@
+<fr-FR>
+• Les noms de rues et de lieux en arabe s'affichent maintenant correctement sur la carte.
+</fr-FR>
+<en-US>
+• Arabic street and place names now display correctly on the map.
+</en-US>
+<ar>
+• أسماء الشوارع والأماكن بالعربية تظهر الآن بشكل صحيح على الخريطة.
+</ar>
