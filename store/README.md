@@ -54,7 +54,7 @@ https://tuntransport.academy/privacy
 **Toutes les fonctionnalités sont disponibles sans accès spécial** (pas de compte ni de connexion : l'identifiant est anonyme et créé automatiquement).
 
 ### Annonces
-**Oui, mon application contient des annonces** (AdMob : bannières et interstitiels).
+**Oui, mon application contient des annonces** (AdMob : bannières, interstitiels et annonces à l'ouverture de l'application).
 
 ### Classification du contenu (questionnaire IARC)
 - Adresse e-mail : `contact@tuntransport.academy`.

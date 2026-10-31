@@ -1,7 +1,7 @@
 // Web stub — the AdMob native SDK cannot run on the web: no-op everything.
 export const adsSupported = false;
 export const AdMob: any = null;
-export const AD_IDS = { banner: undefined as string | undefined, interstitial: undefined as string | undefined };
+export const AD_IDS = { banner: undefined as string | undefined, interstitial: undefined as string | undefined, appOpen: undefined as string | undefined };
 
 export async function initAds() {}
 
