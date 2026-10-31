@@ -14,6 +14,8 @@ Deux versions, avec les mêmes images :
 
 Format vertical 9:16 : convient aux Reels Facebook et Instagram, aux Shorts YouTube (moins de 3 min) et aux statuts WhatsApp (à découper en tranches de 60 s si nécessaire). Les sous-titres sont déjà dans l'image : ne pas ajouter le fichier `.srt` en plus sur Facebook, sinon ils apparaissent deux fois.
 
+La carte de fin affiche le badge « Disponible sur Google Play ».
+
 Comment elle a été faite :
 - Images : la vraie application (version web, même interface que sur Android) filmée écran par écran, avec des véhicules simulés qui roulent sur les lignes.
 - Voix : **voix de synthèse** (Microsoft Edge) : arabe tunisien « ar-TN-Reem », français « fr-FR-Denise ». Pour une version plus naturelle, faire lire le texte ci-dessous par une vraie voix et me l'envoyer : je remplace la piste audio.
