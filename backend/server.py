@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from starlette.middleware.cors import CORSMiddleware
 
 import admin
+import custom_lines
 import geocoder
 import network
 import places
@@ -66,6 +67,7 @@ app.include_router(places.router)
 app.include_router(roads.router)
 app.include_router(suggestions.public)
 app.include_router(suggestions.admin)
+app.include_router(custom_lines.admin)
 app.include_router(trust.router)
 app.include_router(admin.admin)
 app.include_router(admin.admin_page)
@@ -87,6 +89,7 @@ async def startup():
     await trips.setup()
     await trust.setup()
     await suggestions.setup()
+    await custom_lines.setup()
 
 
 @app.on_event("shutdown")

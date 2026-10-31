@@ -90,8 +90,9 @@ def api(monkeypatch, tmp_path, clock):
     monkeypatch.setenv("ADMIN_TOKEN", ADMIN_TOKEN)
     monkeypatch.setattr(trips, "POSITION_COOLDOWN_S", 0)
     with TestClient(server.app) as c:
-        for name in ("users", "trips", "contributions", "reports", "suggestions"):
+        for name in ("users", "trips", "contributions", "reports", "suggestions", "custom_lines"):
             c.portal.call(server.db[name].delete_many, {})
+        c.portal.call(server.custom_lines.apply)
         yield c
 
 

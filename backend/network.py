@@ -57,19 +57,44 @@ class Network:
 
 
 network = Network()
+_file_raw: dict = {"lines": []}
+# Lignes gérées depuis l'admin (custom_lines.py) : elles remplacent celles du fichier de même id ;
+# les ids de _hidden sont retirés du réseau.
+_custom: list = []
+_hidden: set = set()
+
+
+def _rebuild() -> Network:
+    global network
+    replaced = {line["id"] for line in _custom} | _hidden
+    raw = dict(_file_raw)
+    raw["lines"] = [line for line in _file_raw["lines"] if line["id"] not in replaced] + _custom
+    network = Network(raw)
+    return network
+
+
+def file_lines() -> list:
+    """Les lignes du fichier importé, sans les modifications faites dans l'admin."""
+    return _file_raw["lines"]
+
+
+def set_custom(lines: list, hidden: set) -> Network:
+    global _custom, _hidden
+    _custom, _hidden = list(lines), set(hidden)
+    return _rebuild()
 
 
 def load(path: Optional[str] = None) -> Network:
     """(Re)charge le réseau ; un fichier absent donne un réseau vide (l'API reste en ligne)."""
-    global network
+    global _file_raw
     path = Path(path or os.environ.get("NETWORK_FILE") or DEFAULT_FILE)
     if path.exists():
-        network = Network(json.loads(path.read_text(encoding="utf-8")))
-        logger.info("Network loaded: %d lines from %s", len(network.lines), path)
+        _file_raw = json.loads(path.read_text(encoding="utf-8"))
+        logger.info("Network loaded: %d lines from %s", len(_file_raw["lines"]), path)
     else:
-        network = Network()
+        _file_raw = {"lines": []}
         logger.warning("Network file %s missing: run tools/import_tunismapper.py", path)
-    return network
+    return _rebuild()
 
 
 def current() -> Network:

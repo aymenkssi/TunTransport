@@ -4,6 +4,7 @@
 - GET  /api/admin/live             : véhicules en direct sur tout le réseau.
 - GET  /api/admin/network          : source, date d'import et nombre de lignes par mode.
 - POST /api/admin/network/reload   : recharge NETWORK_FILE après un nouvel import, sans redémarrer.
+Les lignes ajoutées à la main sont dans custom_lines.py.
 """
 import os
 import secrets
@@ -118,6 +119,9 @@ async def network_info():
 
 @admin.post("/network/reload")
 async def reload_network():
+    import custom_lines  # importé ici : custom_lines dépend déjà de ce module
+
     network.load()
+    await custom_lines.apply()
     geocoder.load()
     return await network_info()
