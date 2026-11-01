@@ -64,6 +64,9 @@ export const getLine = (id: string) => request<Line>(`/lines/${encodeURIComponen
 export const getLiveVehicles = () => request<LiveVehicle[]>("/vehicles/live");
 export const getLive = () => request<Record<string, number>>("/live");
 
+export type LiveSummary = { sharers: number; vehicles: number };
+export const getLiveSummary = () => request<LiveSummary>("/live/summary");
+
 export const getVehicles = (lineId: string, stopId?: string) =>
   request<Vehicle[]>(`/lines/${encodeURIComponent(lineId)}/vehicles${stopId ? `?stop_id=${encodeURIComponent(stopId)}` : ""}`);
 

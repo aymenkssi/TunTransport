@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, Tabs } from "expo-router";
-import { Pressable } from "react-native";
+import { Pressable, View } from "react-native";
 
+import { LiveSharers } from "@/src/components/LiveSharers";
 import { useColors } from "@/src/theme";
 
 export default function TabsLayout() {
@@ -17,9 +18,12 @@ export default function TabsLayout() {
         tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
         sceneStyle: { backgroundColor: colors.surface },
         headerRight: () => (
-          <Pressable onPress={() => router.push("/about")} hitSlop={12} style={{ marginRight: 16 }} accessibilityLabel="À propos et confidentialité">
-            <Ionicons name="information-circle-outline" size={24} color={colors.onSurface} />
-          </Pressable>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginRight: 16 }}>
+            <LiveSharers />
+            <Pressable onPress={() => router.push("/about")} hitSlop={12} accessibilityLabel="À propos et confidentialité">
+              <Ionicons name="information-circle-outline" size={24} color={colors.onSurface} />
+            </Pressable>
+          </View>
         ),
       }}
     >

@@ -32,6 +32,7 @@ def test_validated_passenger_publishes_vehicle(api, clock, user):
     assert (v["direction"], v["headsign"], v["confirmations"], v["status"]) == (0, "Est", 1, "probable")
     assert abs(v["lat"] - LAT) < 1e-4 and abs(v["along_m"] - body["along_m"]) <= 1
     assert api.get("/api/live").json() == {"L1": 1}
+    assert api.get("/api/live/summary").json() == {"sharers": 1, "vehicles": 1}
 
 
 def test_eta_to_stop_ahead_only(api, clock, user):
@@ -63,6 +64,7 @@ def test_two_passengers_in_same_bus_confirm_it(api, clock, user):
     found = sorted(vehicles(api), key=lambda v: v["along_m"])
     assert [v["confirmations"] for v in found] == [2, 1]
     assert [v["status"] for v in found] == ["fiable", "probable"]
+    assert api.get("/api/live/summary").json() == {"sharers": 3, "vehicles": 2}
 
 
 def test_end_trip_removes_vehicle_immediately(api, clock, user):
@@ -95,6 +97,7 @@ def test_vehicle_becomes_stale_then_disappears(api, clock, user):
     assert v["status"] == "obsolète" and v["age_s"] == 150
     clock.advance(200)
     assert vehicles(api) == [] and api.get("/api/live").json() == {}
+    assert api.get("/api/live/summary").json() == {"sharers": 0, "vehicles": 0}
 
 
 def test_trip_times_out_after_two_hours(api, clock, user):

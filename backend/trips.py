@@ -287,6 +287,19 @@ async def live_counts():
     return counts
 
 
+class LiveSummary(BaseModel):
+    sharers: int   # voyageurs qui partagent en ce moment (positions visibles)
+    vehicles: int  # véhicules qu'ils font apparaître
+
+
+@router.get("/live/summary", response_model=LiveSummary)
+async def live_summary():
+    """Compteur affiché en haut de chaque écran de l'application."""
+    t = now()
+    shown = [v for v in visible(vh.cluster_vehicles(await _fresh_contributions(), t)) if vh.reliability(v, t)[1] != "expiré"]
+    return LiveSummary(sharers=sum(len(v.contributors) for v in shown), vehicles=len(shown))
+
+
 async def setup() -> None:
     await db.trips.create_index("id", unique=True)
     await db.trips.create_index([("user_id", 1), ("started_ts", -1)])
