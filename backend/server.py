@@ -6,7 +6,9 @@ import time
 import uuid
 
 from fastapi import APIRouter, Depends, FastAPI
-from pydantic import BaseModel
+from typing import Optional
+
+from pydantic import BaseModel, Field
 from starlette.middleware.cors import CORSMiddleware
 
 import admin
@@ -37,6 +39,27 @@ class UserCreated(BaseModel):
 @api.get("/")
 async def root():
     return {"message": "TunTransport API online", "lines": len(network.current().lines)}
+
+
+VERSION_RE = r"^\d{1,3}\.\d{1,3}\.\d{1,3}$"
+
+
+class AppVersion(BaseModel):
+    latest: Optional[str] = Field(default=None, pattern=VERSION_RE)   # dernière version sur Google Play
+    minimum: Optional[str] = Field(default=None, pattern=VERSION_RE)  # en dessous : mise à jour obligatoire
+
+
+@api.get("/app/version", response_model=AppVersion)
+async def app_version():
+    """Version publiée, réglée dans l'admin : l'application propose la mise à jour si elle est plus ancienne."""
+    doc = await db.settings.find_one({"id": "app_version"}, {"_id": 0, "id": 0}) or {}
+    return AppVersion(**doc)
+
+
+@admin.admin.put("/app-version", response_model=AppVersion)
+async def set_app_version(payload: AppVersion):
+    await db.settings.update_one({"id": "app_version"}, {"$set": {"id": "app_version", **payload.model_dump()}}, upsert=True)
+    return payload
 
 
 @api.post("/users", response_model=UserCreated)

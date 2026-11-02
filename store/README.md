@@ -363,6 +363,7 @@ Après la publication :
 1. Changer `"version"` dans `frontend/app.json` (par exemple `1.0.1`) ; le `versionCode` est incrémenté automatiquement par EAS.
 2. `yarn build:android:prod` puis `yarn submit:android`.
 3. Play Console : promouvoir la release du test interne vers la production, avec des notes de version.
+4. Quand la nouvelle version est visible sur la fiche Google Play : admin web → **Réseau → Version de l'application** → saisir la version (ex. `1.0.2`) → Enregistrer. Les téléphones qui ont une version plus ancienne proposent alors la mise à jour à l'ouverture (à partir de la 1.0.2, la première qui contient cette fonction).
 
 ## Refus fréquents et solutions
 

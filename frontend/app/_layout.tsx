@@ -10,11 +10,13 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { initAds } from "@/src/ads";
 import { LiveSharers } from "@/src/components/LiveSharers";
 import { useColors } from "@/src/theme";
+import { startUpdateChecks } from "@/src/update";
 
 export default function RootLayout() {
   const colors = useColors();
   useEffect(() => {
     initAds(); // consentement (si la loi l'exige), puis publicités
+    startUpdateChecks(); // propose la mise à jour si une version plus récente est publiée
   }, []);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
