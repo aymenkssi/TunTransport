@@ -1,0 +1,12 @@
+<fr-FR>
+• Nouveau : le nombre de voyageurs qui partagent leur position en direct s'affiche en haut de chaque écran. Touchez-le pour en savoir plus.
+• Dans le bus ou le métro ? Touchez « Je suis dans ce véhicule » : plus on est nombreux à partager, plus les informations sont précises.
+</fr-FR>
+<en-US>
+• New: the number of riders sharing their position live is shown at the top of every screen. Tap it to learn more.
+• On a bus or metro? Tap "Je suis dans ce véhicule" (I'm on this vehicle): the more people share, the more accurate it gets.
+</en-US>
+<ar>
+• جديد: عدد الركاب الذين يشاركون موقعهم مباشرة يظهر في أعلى كل شاشة. المسه لمعرفة المزيد.
+• في الحافلة أو المترو؟ المس «Je suis dans ce véhicule»: كلما زاد عدد المشاركين، كانت المعلومات أدق.
+</ar>

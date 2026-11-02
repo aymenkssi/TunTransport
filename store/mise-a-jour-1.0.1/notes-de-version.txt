@@ -1,15 +1,12 @@
 <fr-FR>
 • Les noms de rues et de lieux en arabe s'affichent maintenant correctement sur la carte.
 • La localisation fonctionne dès qu'elle est activée, sans avoir à relancer l'application.
-• Nouveau : le nombre de voyageurs qui partagent leur position en direct, en haut de chaque écran.
 </fr-FR>
 <en-US>
 • Arabic street and place names now display correctly on the map.
 • Location works as soon as it is turned on, without restarting the app.
-• New: the number of riders sharing their position live, at the top of every screen.
 </en-US>
 <ar>
 • أسماء الشوارع والأماكن بالعربية تظهر الآن بشكل صحيح على الخريطة.
 • تحديد الموقع يعمل فور تفعيله، دون الحاجة لإعادة فتح التطبيق.
-• جديد: عدد الركاب الذين يشاركون موقعهم مباشرة، في أعلى كل شاشة.
 </ar>
