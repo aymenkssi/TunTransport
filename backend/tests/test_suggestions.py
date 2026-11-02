@@ -58,3 +58,20 @@ def test_deleting_my_data_removes_my_suggestions(api, user):
     send(api, user(), message="Celle d'un autre utilisateur")
     api.post("/api/users/me/delete", headers=h)
     assert api.portal.call(server.db.suggestions.count_documents, {}) == 1
+
+
+def test_ip_and_country_are_kept_and_limited(api, user, monkeypatch):
+    import suggestions
+
+    async def tunisia(ip):
+        return "TN"
+
+    monkeypatch.setattr(suggestions, "country_of", tunisia)
+    monkeypatch.setattr(suggestions, "MAX_PER_IP_PER_DAY", 6)
+    first, second = user(), user()  # deux utilisateurs anonymes, même adresse IP
+    for i in range(3):
+        assert send(api, first, message=f"Message numéro {i}").status_code == 200
+        assert send(api, second, message=f"Autre message {i}").status_code == 200
+    assert send(api, user(), message="Nouvel utilisateur, même IP").status_code == 429
+    s = api.get("/api/admin/suggestions", headers=ADMIN).json()["items"][0]
+    assert (s["ip"], s["country"], s["same_ip"]) == ("testclient", "TN", 6)

@@ -98,7 +98,7 @@ Types de données à cocher :
 | Catégorie → type | Collectée | Partagée | Éphémère | Obligatoire ? | Finalités |
 |---|---|---|---|---|---|
 | Position → **Position exacte** | Oui | Non | **Oui** (coordonnées traitées puis jetées, seule la position du véhicule sur la ligne reste 5 min) | Facultative (seulement si l'utilisateur partage un trajet ou demande « Ma position ») | Fonctionnalités de l'application ; Prévention de la fraude, sécurité et conformité |
-| Position → **Position approximative** | Oui | Non | Oui | Facultative | Fonctionnalités de l'application |
+| Position → **Position approximative** | Oui | Non | Non | Facultative | Fonctionnalités de l'application ; Prévention de la fraude, sécurité et conformité (pays déduit de l'adresse IP, gardé avec les suggestions) |
 | Informations personnelles → **Adresse e-mail** | Oui | Non | Non | Facultative (contact laissé dans une suggestion) | Communications du développeur |
 | Informations personnelles → **Numéro de téléphone** | Oui | Non | Non | Facultative (idem) | Communications du développeur |
 | Messages → **Autres contenus générés par l'utilisateur** | Oui | Non | Non | Facultative (texte des suggestions et signalements) | Fonctionnalités de l'application ; Communications du développeur |

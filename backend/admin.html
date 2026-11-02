@@ -125,7 +125,7 @@
 
     <div data-panel="suggestions" hidden>
       <h2>Suggestions des utilisateurs</h2>
-      <p class="hint">Envoyées depuis l'application (À propos → Envoyer une suggestion, ou « Signaler une erreur » sur une ligne), 5 par jour et par utilisateur. Le contact n'est rempli que si l'utilisateur souhaite une réponse.</p>
+      <p class="hint">Envoyées depuis l'application (À propos → Envoyer une suggestion, ou « Signaler une erreur » sur une ligne), 5 par jour et par utilisateur, 10 par jour et par adresse IP. Le contact n'est rempli que si l'utilisateur souhaite une réponse. Un pays autre que la Tunisie est surligné.</p>
       <div class="filters" id="sugg-filters">
         <button data-status="" aria-pressed="true">Toutes</button>
         <button data-status="new" aria-pressed="false">Nouvelles</button>
@@ -264,6 +264,19 @@ function updateSuggBadge(counts) {
   badge.hidden = !counts.new;
 }
 
+const regionName = (() => { try { return new Intl.DisplayNames(["fr"], { type: "region" }); } catch { return null; } })();
+const flag = (cc) => cc.toUpperCase().replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)));
+
+// Adresse IP et pays d'envoi : un pays inattendu ou beaucoup de messages d'une même adresse signalent un abus.
+function origin(s) {
+  if (!s.ip) return '<span class="muted">IP non enregistrée (message envoyé avant cette fonction)</span>';
+  const country = s.country
+    ? `<span class="${s.country === "TN" ? "" : "pill obsolète"}">${flag(s.country)} ${esc(regionName?.of(s.country) || s.country)}</span>`
+    : '<span class="muted">pays inconnu</span>';
+  const many = s.same_ip > 1 ? `<span class="${s.same_ip >= 5 ? "pill new" : "muted"}">${s.same_ip} messages depuis cette adresse</span>` : "";
+  return `<span>IP <code>${esc(s.ip)}</code></span>${country}${many}`;
+}
+
 async function loadSuggestions() {
   const r = await call("/suggestions" + (suggFilter ? `?status=${suggFilter}` : ""));
   updateSuggBadge(r.counts);
@@ -281,6 +294,7 @@ async function loadSuggestions() {
         ${s.line_label ? `<span>Ligne ${esc(s.line_label)}</span>` : ""}
         ${s.platform ? `<span>${esc(s.platform)} ${esc(s.app_version || "")}</span>` : ""}
       </div>
+      <div class="meta">${origin(s)}</div>
       <div class="body">${esc(s.message)}</div>
       ${s.contact ? `<div class="meta">Contact : ${esc(s.contact)}</div>` : ""}
       <div class="actions">
