@@ -1,5 +1,6 @@
 // About: how sharing works, privacy, and deleting one's data.
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
@@ -75,9 +76,7 @@ export default function AboutScreen() {
       <Pressable style={[styles.danger, busy && styles.disabled]} onPress={confirm} disabled={busy}>
         <Text style={styles.dangerText}>Supprimer mes données</Text>
       </Pressable>
-      <Text style={styles.small}>
-        Lignes, arrêts et horaires : tunismapper.com. Carte et adresses : OpenFreeMap et Nominatim, données © contributeurs OpenStreetMap.
-      </Text>
+      <Text style={styles.small}>Version {Constants.expoConfig?.version ?? "—"}</Text>
     </ScrollView>
   );
 }
