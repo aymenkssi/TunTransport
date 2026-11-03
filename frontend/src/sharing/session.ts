@@ -143,6 +143,25 @@ export async function startSharing(line: LineSummary, direction: number): Promis
   }
 }
 
+/**
+ * At launch: a trip still in progress whose location service was stopped by the system (battery
+ * saver, app swiped away on some phones) starts again, with 2 minutes to get back on the line.
+ */
+export async function resumeSharing(): Promise<void> {
+  if (Platform.OS === "web") return;
+  const current = await restoreShare();
+  if (!current) return;
+  if (Date.now() - current.startedAt > MAX_TRIP_MS) {
+    await stopSharing();
+    return;
+  }
+  try {
+    if (await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK)) return;
+    await save({ ...current, lastOnRouteAt: Date.now(), fixes: [] });
+    await startUpdates();
+  } catch {}
+}
+
 export async function stopSharing(): Promise<void> {
   const current = state;
   await stopUpdates();

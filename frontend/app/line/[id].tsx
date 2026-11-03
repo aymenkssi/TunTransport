@@ -2,7 +2,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { getLine, getVehicles, Line, Vehicle } from "@/src/api/network";
 import { LineBadge } from "@/src/components/LineBadge";
@@ -73,6 +73,17 @@ export default function LineScreen() {
   }, [line, dir, shownDirection, color, stopsById, selectedStop, shown]);
 
   const onSelectStop = useCallback((stopId: string) => setSelectedStop((cur) => (cur === stopId ? null : stopId)), []);
+
+  // Some phones (Xiaomi, Samsung, Huawei, Oppo…) stop background apps to save battery.
+  const explainBackground = () =>
+    Alert.alert(
+      "Garder le partage en arrière-plan",
+      "Certains téléphones arrêtent les applications fermées pour économiser la batterie.\n\nDans les réglages de TransTunisLive, ouvrez « Batterie » et choisissez « Sans restriction » (ou désactivez l’optimisation de la batterie). Sur Xiaomi, activez aussi le « Démarrage automatique ».\n\nSi le partage s’est arrêté, il reprend tout seul quand vous rouvrez l’application.",
+      [
+        { text: "Plus tard", style: "cancel" },
+        { text: "Ouvrir les réglages", onPress: () => Linking.openSettings() },
+      ],
+    );
 
   const onShare = async () => {
     if (!line) return;
@@ -160,6 +171,11 @@ export default function LineScreen() {
             <Pressable style={styles.stopButton} onPress={stopSharing}>
               <Text style={styles.stopButtonText}>Arrêter le partage</Text>
             </Pressable>
+            {Platform.OS === "android" && (
+              <Pressable onPress={explainBackground} hitSlop={6}>
+                <Text style={styles.reportLink}>Le partage s’arrête quand vous quittez l’application ?</Text>
+              </Pressable>
+            )}
           </View>
         ) : (
           <Pressable style={[styles.shareButton, busy && styles.disabled]} onPress={onShare} disabled={busy}>
