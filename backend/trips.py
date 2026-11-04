@@ -154,6 +154,9 @@ async def start_trip(payload: TripStart, user: dict = Depends(current_user)):
         "track": [],
     }
     await db.trips.insert_one(trip)
+    import notify  # ici : notify dépend du module admin, qui importe celui-ci
+
+    notify.trip_started(line, payload.direction, await db.trips.count_documents({"started_ts": {"$gte": day_start}}))
     headsign = line.data["directions"][payload.direction]["headsign"]
     return TripStarted(id=trip["id"], line_id=line.id, direction=payload.direction, headsign=headsign)
 
@@ -205,6 +208,10 @@ async def post_positions(trip_id: str, trace: network.Trace, user: dict = Depend
         upsert=True,
     )
     await db.trips.update_one({"id": trip_id}, {"$inc": {"on_route_count": 1}})
+    if not trip.get("on_route_count"):  # première position validée de ce trajet
+        import notify
+
+        notify.trip_validated(line, trip["direction"], await db.contributions.count_documents({}))
     # Un autre passager est dans le même véhicule : les trajets se confirment mutuellement.
     for vehicle in vh.cluster_vehicles(await _fresh_contributions(trip["line_id"]), t):
         if trip_id in vehicle.contributors and len(vehicle.contributors) >= 2:

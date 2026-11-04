@@ -95,6 +95,7 @@
       <button role="tab" data-tab="stats" aria-selected="false">Statistiques</button>
       <button role="tab" data-tab="suggestions" aria-selected="false">Suggestions <span id="sugg-badge" class="pill new" hidden></span></button>
       <button role="tab" data-tab="lines" aria-selected="false">Lignes ajoutées</button>
+      <button role="tab" data-tab="notify" aria-selected="false">Notifications</button>
       <button role="tab" data-tab="network" aria-selected="false">Réseau</button>
     </nav>
 
@@ -178,6 +179,35 @@
           </div>
           <div class="status" id="cl-status"></div>
         </form>
+      </section>
+    </div>
+
+    <div data-panel="notify" hidden>
+      <h2>Notifications Telegram</h2>
+      <p class="hint">Recevez un message Telegram dès qu'un voyageur commence à partager un trajet.</p>
+      <section class="panel">
+        <ol class="hint" style="padding-left:18px;margin-top:0">
+          <li>Dans Telegram, ouvrez <strong>@BotFather</strong>, envoyez <code>/newbot</code>, choisissez un nom (ex. « TransTunisLive Admin ») et un identifiant finissant par « bot ». Copiez le <strong>jeton</strong> qu'il vous donne.</li>
+          <li>Ouvrez votre nouveau bot et envoyez-lui <code>/start</code> (ou ajoutez-le à un groupe et écrivez un message dans le groupe).</li>
+          <li>Collez le jeton ci-dessous, cliquez sur <strong>Trouver mon chat ID</strong>, choisissez la conversation, puis enregistrez et envoyez un test.</li>
+        </ol>
+        <form id="tg-form" style="display:grid;gap:12px">
+          <label>Jeton du bot<input id="tg-token" type="password" autocomplete="off" placeholder="123456789:AA…"></label>
+          <div class="grid">
+            <label>Chat ID<input id="tg-chat" placeholder="ex. 123456789"></label>
+            <label>&nbsp;<button type="button" id="tg-find">Trouver mon chat ID</button></label>
+          </div>
+          <div class="search-results" id="tg-chats"></div>
+          <label style="display:flex;gap:8px;align-items:center;color:var(--text)"><input type="checkbox" id="tg-start" style="width:auto"> Un voyageur commence à partager un trajet</label>
+          <label style="display:flex;gap:8px;align-items:center;color:var(--text)"><input type="checkbox" id="tg-valid" style="width:auto"> Son trajet est validé sur la ligne (il est vraiment dans le véhicule)</label>
+          <label style="display:flex;gap:8px;align-items:center;color:var(--text)"><input type="checkbox" id="tg-enabled" style="width:auto"> <strong>Notifications activées</strong></label>
+          <div class="row-actions">
+            <button class="primary" type="submit">Enregistrer</button>
+            <button type="button" id="tg-test">Envoyer un test</button>
+          </div>
+        </form>
+        <div class="status" id="tg-status"></div>
+        <p class="hint" style="margin-top:8px">Au plus 60 messages par heure. Le jeton est gardé sur le serveur et n'est plus affiché en entier ; laissez le champ vide pour le conserver.</p>
       </section>
     </div>
 
@@ -551,11 +581,67 @@ $("cl-form").addEventListener("submit", async (e) => {
   }
 });
 
+// ---------------- Notifications Telegram ----------------
+const tgMsg = (html) => ($("tg-status").innerHTML = html);
+
+async function loadTelegram() {
+  const t = await call("/telegram");
+  $("tg-token").value = "";
+  $("tg-token").placeholder = t.token_hint ? `Enregistré : ${t.token_hint} (laisser vide pour le garder)` : "123456789:AA…";
+  $("tg-chat").value = t.chat_id || "";
+  $("tg-start").checked = t.on_trip_start;
+  $("tg-valid").checked = t.on_trip_validated;
+  $("tg-enabled").checked = t.enabled;
+}
+
+$("tg-find").addEventListener("click", async () => {
+  tgMsg("Recherche des conversations du bot…");
+  try {
+    const token = $("tg-token").value.trim();
+    const chats = await call(`/telegram/chats${token ? `?bot_token=${encodeURIComponent(token)}` : ""}`);
+    $("tg-chats").innerHTML = chats.length
+      ? chats.map((c) => `<button type="button" data-id="${esc(c.id)}">${esc(c.name || "Sans nom")} <span class="muted">· ${esc(c.type)} · ${esc(c.id)}</span></button>`).join("")
+      : '<p class="hint">Aucune conversation : envoyez /start à votre bot dans Telegram, puis réessayez.</p>';
+    tgMsg("");
+  } catch (err) {
+    tgMsg(`<span class="err">${esc(err.message)}</span>`);
+  }
+});
+$("tg-chats").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  $("tg-chat").value = b.dataset.id;
+  $("tg-chats").innerHTML = "";
+  if (!$("tg-enabled").checked) $("tg-enabled").checked = true;
+});
+$("tg-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await call("/telegram", { method: "PUT", body: JSON.stringify({
+      enabled: $("tg-enabled").checked, bot_token: $("tg-token").value.trim() || null, chat_id: $("tg-chat").value.trim() || null,
+      on_trip_start: $("tg-start").checked, on_trip_validated: $("tg-valid").checked,
+    }) });
+    await loadTelegram();
+    tgMsg(`<span class="ok">Enregistré${$("tg-enabled").checked ? " : les notifications sont actives" : " (notifications désactivées)"}.</span>`);
+  } catch (err) {
+    tgMsg(`<span class="err">${esc(err.message)}</span>`);
+  }
+});
+$("tg-test").addEventListener("click", async () => {
+  tgMsg("Envoi…");
+  try {
+    await call("/telegram/test", { method: "POST" });
+    tgMsg('<span class="ok">Message envoyé : vérifiez Telegram.</span>');
+  } catch (err) {
+    tgMsg(`<span class="err">${esc(err.message)}</span>`);
+  }
+});
+
 function show(tab) {
   document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
   document.querySelectorAll("[data-panel]").forEach((p) => (p.hidden = p.dataset.panel !== tab));
   clearInterval(liveTimer);
-  const load = { live: loadLive, stats: loadStats, suggestions: loadSuggestions, lines: loadCustomLines, network: loadNetwork }[tab];
+  const load = { live: loadLive, stats: loadStats, suggestions: loadSuggestions, lines: loadCustomLines, notify: loadTelegram, network: loadNetwork }[tab];
   load().catch((e) => console.error(e));
   if (tab === "live") liveTimer = setInterval(() => loadLive().catch(() => {}), 10000);
 }

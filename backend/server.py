@@ -15,6 +15,7 @@ import admin
 import custom_lines
 import geocoder
 import network
+import notify
 import places
 import roads
 import suggestions
@@ -91,6 +92,7 @@ app.include_router(roads.router)
 app.include_router(suggestions.public)
 app.include_router(suggestions.admin)
 app.include_router(custom_lines.admin)
+app.include_router(notify.admin)
 app.include_router(trust.router)
 app.include_router(admin.admin)
 app.include_router(admin.admin_page)
