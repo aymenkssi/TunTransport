@@ -1,0 +1,24 @@
+<fr-FR>
+• Carte plus fluide, avec boutons + / − et ← / →.
+• Liste des arrêts : la dernière station passée par un bus en direct est en gras, avec une flèche vers la suivante.
+• Le partage continue quand vous quittez l'application et tolère les déviations du bus.
+• Temps d'arrivée en direct plus précis.
+• Corrigé : fermeture au démarrage sur certains téléphones.
+• L'application propose les nouvelles mises à jour ; version affichée dans À propos.
+</fr-FR>
+<en-US>
+• Smoother map, with + / − and ← / → buttons.
+• Stop list: the last stop passed by a live bus is in bold, with an arrow to the next one.
+• Sharing keeps going when you leave the app and through bus detours.
+• More accurate live arrival times.
+• Fixed: the app closing at launch on some phones.
+• The app now offers new updates; version shown in About.
+</en-US>
+<ar>
+• خريطة أكثر سلاسة مع أزرار + / − و ← / →.
+• قائمة المحطات: آخر محطة مرّت بها الحافلة مباشرة بخط عريض مع سهم نحو المحطة التالية.
+• تستمر المشاركة عند الخروج من التطبيق وأثناء انحراف الحافلة عن مسارها.
+• مواعيد وصول مباشرة أدق.
+• إصلاح: إغلاق التطبيق عند التشغيل في بعض الهواتف.
+• التطبيق يقترح التحديثات الجديدة، ورقم الإصدار في «À propos».
+</ar>
