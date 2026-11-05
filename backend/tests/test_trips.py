@@ -38,7 +38,11 @@ def test_validated_passenger_publishes_vehicle(api, clock, user):
 def test_eta_to_stop_ahead_only(api, clock, user):
     ride(api, clock, user())  # ~1,3 km du terminus, 8 m/s
     [v] = vehicles(api, stop_id="s3")
-    assert abs(v["eta_s"] - (4458 - v["along_m"]) / 8.0) < 10
+    # 3,1 km à parcourir : moitié vitesse mesurée (8 m/s), moitié vitesse habituelle du bus (4,2 m/s),
+    # plus l'arrêt intermédiaire s2.
+    assert abs(v["eta_s"] - ((4458 - v["along_m"]) / ((8.0 + 4.2) / 2) + 20)) < 10
+    [near] = vehicles(api, stop_id="s2")  # à 450 m : surtout la vitesse mesurée
+    assert abs(near["eta_s"] - (1783 - near["along_m"]) / (8.0 * 0.925 + 4.2 * 0.075)) < 5
     assert vehicles(api, stop_id="s1")[0]["eta_s"] is None   # déjà passé
 
 

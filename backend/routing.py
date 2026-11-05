@@ -37,11 +37,8 @@ MAX_TRANSFER_WALK_M = 400.0  # marche maximale entre deux arrêts lors d'une cor
 DIRECT_WALK_MAX_M = 2500.0
 TRANSFER_PENALTY_S = 240     # une correspondance « coûte » 4 min de plus que le temps réel
 MAX_BOARDINGS = 3
-DWELL_S = 20                 # arrêt à chaque station
+DWELL_S = vh.DWELL_S         # arrêt à chaque station
 MAX_RESULTS = 3
-SPEED_MPS = {"metro": 5.5, "bus": 4.2, "rfr": 11.0, "train": 13.0}
-# Le TGM est classé « métro » par la source, mais c'est un train de banlieue (arrêts espacés, ~32 km/h).
-SPEED_BY_LINE = {"TGM": 9.0}
 # Tracé reconstruit en ligne droite entre arrêts : la distance réelle est plus longue (rues pour le bus).
 STOPS_ONLY_DISTANCE_FACTOR = {"bus": 1.3}
 STOPS_ONLY_DISTANCE_FACTOR_DEFAULT = 1.1
@@ -169,7 +166,7 @@ def live_wait(p: Pattern, stop_along: float, t: float, now: float, live: List[vh
     for v in live:
         if v.line_id != p.line.id or v.direction != p.direction:
             continue
-        eta = vh.eta_seconds(v, stop_along, now)
+        eta = vh.eta_seconds(v, stop_along, now, vh.typical_speed(p.line.data), [a for _, a in p.stops])
         if eta is None:
             continue
         arrival = now + eta
@@ -192,7 +189,7 @@ def ride_s(p: Pattern, i: int, j: int) -> float:
     dist = p.stops[j][1] - p.stops[i][1]
     if p.line.data.get("shape_source") != "tunismapper":
         dist *= STOPS_ONLY_DISTANCE_FACTOR.get(p.mode, STOPS_ONLY_DISTANCE_FACTOR_DEFAULT)
-    speed = SPEED_BY_LINE.get(p.line.data["short_name"], SPEED_MPS.get(p.mode, 5.0))
+    speed = vh.typical_speed(p.line.data)
     return max(dist, 0.0) / speed + DWELL_S * (j - i)
 
 

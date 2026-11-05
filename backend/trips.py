@@ -240,7 +240,8 @@ def _vehicle_out(line: "network.LoadedLine", vehicle: vh.Vehicle, t: float, stop
     eta = None
     if stop_id:
         stop = next((s for s in direction["stops"] if s["id"] == stop_id), None)
-        seconds = vh.eta_seconds(vehicle, stop["along_m"], t) if stop else None
+        alongs = [s["along_m"] for s in direction["stops"]]
+        seconds = vh.eta_seconds(vehicle, stop["along_m"], t, vh.typical_speed(line.data), alongs) if stop else None
         eta = None if seconds is None else round(seconds)
     return {
         "direction": vehicle.direction,

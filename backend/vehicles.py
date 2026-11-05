@@ -12,6 +12,19 @@ MAX_EXTRAPOLATION_S = 60.0
 DEFAULT_SPEED_MPS = 5.0          # ~18 km/h, vitesse commerciale urbaine typique
 MIN_SPEED_MPS = 2.0
 MAX_SPEED_MPS = 20.0
+# Vitesse habituelle en roulant, hors arrêts (utilisée aussi pour les itinéraires).
+TYPICAL_SPEED_MPS = {"metro": 5.5, "bus": 4.2, "rfr": 11.0, "train": 13.0}
+# Le TGM est classé « métro » par la source, mais c'est un train de banlieue (arrêts espacés, ~32 km/h).
+TYPICAL_SPEED_BY_LINE = {"TGM": 9.0}
+DWELL_S = 20                     # arrêt à chaque station
+# Loin de l'arrêt, la vitesse mesurée dit peu de la suite du trajet (voie rapide, puis ville) :
+# on la mélange avec la vitesse habituelle, jusqu'à moitié-moitié à partir de BLEND_DISTANCE_M.
+BLEND_DISTANCE_M = 3000.0
+MAX_TYPICAL_WEIGHT = 0.5
+
+
+def typical_speed(line_data):
+    return TYPICAL_SPEED_BY_LINE.get(line_data.get("short_name"), TYPICAL_SPEED_MPS.get(line_data.get("mode"), 5.0))
 
 
 @dataclass(frozen=True)
@@ -100,12 +113,21 @@ def reliability(vehicle, now):
     return score, "probable"
 
 
-def eta_seconds(vehicle, stop_along_m, now):
+def eta_seconds(vehicle, stop_along_m, now, typical_mps=None, stop_alongs=()):
     """Temps estimé avant l'arrivée du véhicule à l'arrêt, ou None s'il l'a dépassé.
-    La vitesse instantanée est bornée : un bus à l'arrêt n'a pas un ETA infini."""
-    remaining = stop_along_m - vehicle.estimated_along(now)
+
+    Vitesse : la vitesse mesurée (bornée : un bus à l'arrêt n'a pas un ETA infini), mélangée à la
+    vitesse habituelle de la ligne d'autant plus que l'arrêt est loin ; plus DWELL_S par arrêt
+    intermédiaire (stop_alongs : positions des arrêts de ce sens sur le tracé)."""
+    here = vehicle.estimated_along(now)
+    remaining = stop_along_m - here
     if remaining < 0:
         return None
-    speed = vehicle.speed_mps if vehicle.speed_mps > 0 else DEFAULT_SPEED_MPS
-    speed = min(max(speed, MIN_SPEED_MPS), MAX_SPEED_MPS)
-    return remaining / speed
+    measured = vehicle.speed_mps if vehicle.speed_mps > 0 else DEFAULT_SPEED_MPS
+    measured = min(max(measured, MIN_SPEED_MPS), MAX_SPEED_MPS)
+    speed = measured
+    if typical_mps:
+        weight = MAX_TYPICAL_WEIGHT * min(remaining / BLEND_DISTANCE_M, 1.0)
+        speed = (1 - weight) * measured + weight * typical_mps
+    stops_between = sum(1 for a in stop_alongs if here < a < stop_along_m)
+    return remaining / speed + DWELL_S * stops_between

@@ -57,7 +57,7 @@ def test_no_service_at_night_with_a_far_origin(api, clock):
 
 
 def test_scheduled_mode_uses_timetable(api, clock, monkeypatch):
-    monkeypatch.setitem(routing.SPEED_MPS, "bus", 4.2)
+    monkeypatch.setitem(routing.vh.TYPICAL_SPEED_MPS, "bus", 4.2)
     monkeypatch.setattr(routing, "SCHEDULED_MODES", {"bus"})
     at(clock, 6, 20)
     leg = next(i for i in plan(api, {"stop_id": "s1"}, {"stop_id": "s3"}) if i["legs"][0]["kind"] == "ride")["legs"][0]
