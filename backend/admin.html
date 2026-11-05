@@ -59,6 +59,7 @@
   .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
   .filters button[aria-pressed=true] { border-color: var(--brand); color: var(--text); }
   button.danger { color: var(--red); }
+  button.user-link { padding: 2px 6px; font-weight: 400; }
   select { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; width: 100%; }
   label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
@@ -94,6 +95,7 @@
       <button role="tab" data-tab="live" aria-selected="true">En direct</button>
       <button role="tab" data-tab="stats" aria-selected="false">Statistiques</button>
       <button role="tab" data-tab="suggestions" aria-selected="false">Suggestions <span id="sugg-badge" class="pill new" hidden></span></button>
+      <button role="tab" data-tab="users" aria-selected="false">Fiabilité</button>
       <button role="tab" data-tab="lines" aria-selected="false">Lignes ajoutées</button>
       <button role="tab" data-tab="notify" aria-selected="false">Notifications</button>
       <button role="tab" data-tab="network" aria-selected="false">Réseau</button>
@@ -104,7 +106,7 @@
       <p class="hint">Véhicules signalés par les passagers, actualisés toutes les 10 secondes. Un véhicule « fiable » est confirmé par plusieurs passagers ; il disparaît 5 minutes après la dernière position. « Masqué » : partagé uniquement par des utilisateurs à faible réputation, invisible des voyageurs tant qu'un utilisateur de confiance ne le confirme pas.</p>
       <section class="panel table-wrap">
         <table>
-          <thead><tr><th>Ligne</th><th>Vers</th><th class="n">Position</th><th class="n">Vitesse</th><th class="n">Passagers</th><th class="n">Âge</th><th>Statut</th><th>Carte</th></tr></thead>
+          <thead><tr><th>Ligne</th><th>Vers</th><th class="n">Position</th><th class="n">Vitesse</th><th class="n">Passagers</th><th class="n">Âge</th><th>Statut</th><th>Carte</th><th>Utilisateurs</th></tr></thead>
           <tbody id="live-rows"></tbody>
         </table>
       </section>
@@ -135,6 +137,22 @@
       </div>
       <div class="status" id="sugg-status"></div>
       <div id="sugg-list"></div>
+    </div>
+
+    <div data-panel="users" hidden>
+      <h2>Fiabilité des utilisateurs</h2>
+      <p class="hint">Chaque utilisateur anonyme a une fiabilité invisible pour lui : elle monte quand d'autres passagers confirment ses trajets, elle baisse quand ses trajets sont refusés, signalés « n'existe pas » ou utilisent un faux GPS. Sous 40 %, ses véhicules ne sont affichés que si un utilisateur fiable les confirme. <strong>Rétablir</strong> efface ses pénalités (les confirmations sont gardées) : à utiliser après une erreur (ligne mal tracée, déviation, signalement abusif).</p>
+      <div class="filters" style="align-items:center">
+        <input id="u-search" placeholder="Identifiant (début), ex. 3f2a9c1b — voir l'onglet En direct" style="max-width:420px">
+        <label style="display:flex;gap:6px;align-items:center;color:var(--text)"><input type="checkbox" id="u-untrusted" checked style="width:auto"> Non fiables seulement</label>
+      </div>
+      <div class="status" id="u-status"></div>
+      <section class="panel table-wrap">
+        <table>
+          <thead><tr><th>Utilisateur</th><th>Fiabilité</th><th class="n">Confirmés</th><th>Pénalités</th><th class="n">Trajets (7 j)</th><th>Dernier trajet</th><th></th></tr></thead>
+          <tbody id="u-rows"></tbody>
+        </table>
+      </section>
     </div>
 
     <div data-panel="lines" hidden>
@@ -263,8 +281,9 @@ async function loadLive() {
       <td>${esc(r.label)}</td><td>${esc(r.headsign)}</td><td class="n">${fmtKm(r.along_m)}</td>
       <td class="n">${r.speed_kmh} km/h</td><td class="n">${r.confirmations}</td><td class="n">${fmtAge(r.age_s)}</td>
       <td><span class="pill ${esc(r.status)}">${esc(r.status)}</span></td>
-      <td>${r.visible ? "visible" : '<span class="pill obsolète">masqué</span>'}</td></tr>`).join("")
-    : `<tr><td colspan="8" class="muted">Aucun véhicule partagé en ce moment.</td></tr>`;
+      <td>${r.visible ? "visible" : '<span class="pill obsolète">masqué</span>'}</td>
+      <td>${(r.users || []).map((u) => `<button class="user-link" data-user="${esc(u.id)}" title="Voir sa fiabilité"><code>${esc(u.short)}</code>${u.trusted ? "" : " ⚠️"}</button>`).join(" ")}</td></tr>`).join("")
+    : `<tr><td colspan="9" class="muted">Aucun véhicule partagé en ce moment.</td></tr>`;
 }
 
 async function loadStats() {
@@ -382,6 +401,47 @@ $("ver-form").addEventListener("submit", async (e) => {
   } catch (err) {
     $("ver-status").innerHTML = `<span class="err">${esc(err.message)}</span>`;
   }
+});
+
+// ---------------- Fiabilité des utilisateurs ----------------
+async function loadUsers() {
+  const q = $("u-search").value.trim();
+  const rows = await call(`/users?untrusted_only=${$("u-untrusted").checked}${q ? `&q=${encodeURIComponent(q)}` : ""}`);
+  const pen = (r) => [
+    r.mocked && `${r.mocked} faux GPS`, r.reported && `${r.reported} signalé${r.reported > 1 ? "s" : ""}`,
+    r.rejected && `${r.rejected} refusé${r.rejected > 1 ? "s" : ""}`, r.solo && `${r.solo} seul${r.solo > 1 ? "s" : ""}`,
+  ].filter(Boolean).join(" · ") || '<span class="muted">aucune</span>';
+  $("u-rows").innerHTML = rows.length ? rows.map((r) => `<tr data-id="${esc(r.id)}">
+      <td><code title="${esc(r.id)}">${esc(r.short)}</code></td>
+      <td><span class="pill ${r.trusted ? "fiable" : "obsolète"}">${Math.round(r.reputation * 100)} % · ${r.trusted ? "fiable" : "non fiable"}</span></td>
+      <td class="n">${r.confirmed}</td><td>${pen(r)}</td><td class="n">${r.trips_7d}</td>
+      <td>${r.last_trip_at ? `${esc(new Date(r.last_trip_at).toLocaleString("fr-FR"))}<br><span class="muted">${esc(r.last_line || "")}</span>` : '<span class="muted">—</span>'}</td>
+      <td>${r.mocked + r.reported + r.rejected + r.solo > 0 ? '<button data-reset>Rétablir la fiabilité</button>' : (r.reset_at ? `<span class="muted">rétablie le ${esc(new Date(r.reset_at).toLocaleDateString("fr-FR"))}</span>` : "")}</td></tr>`).join("")
+    : `<tr><td colspan="7" class="muted">${q ? "Aucun utilisateur avec cet identifiant." : "Aucun utilisateur non fiable."}</td></tr>`;
+}
+
+let userSearchTimer = null;
+$("u-search").addEventListener("input", () => { clearTimeout(userSearchTimer); userSearchTimer = setTimeout(() => loadUsers().catch(() => {}), 300); });
+$("u-untrusted").addEventListener("change", () => loadUsers().catch(() => {}));
+$("u-rows").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-reset]");
+  const tr = e.target.closest("tr");
+  if (!b || !tr) return;
+  if (!confirm("Effacer les pénalités de cet utilisateur ? Ses partages seront de nouveau affichés sans confirmation.")) return;
+  try {
+    await call(`/users/${encodeURIComponent(tr.dataset.id)}/reputation/reset`, { method: "POST" });
+    $("u-status").innerHTML = '<span class="ok">Fiabilité rétablie.</span>';
+    await loadUsers();
+  } catch (err) {
+    $("u-status").innerHTML = `<span class="err">${esc(err.message)}</span>`;
+  }
+});
+// Depuis « En direct » : un clic sur un utilisateur ouvre sa fiabilité.
+$("live-rows").addEventListener("click", (e) => {
+  const b = e.target.closest("button.user-link");
+  if (!b) return;
+  $("u-search").value = b.dataset.user.slice(0, 8);
+  show("users");
 });
 
 // ---------------- Lignes ajoutées ----------------
@@ -641,7 +701,7 @@ function show(tab) {
   document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
   document.querySelectorAll("[data-panel]").forEach((p) => (p.hidden = p.dataset.panel !== tab));
   clearInterval(liveTimer);
-  const load = { live: loadLive, stats: loadStats, suggestions: loadSuggestions, lines: loadCustomLines, notify: loadTelegram, network: loadNetwork }[tab];
+  const load = { live: loadLive, stats: loadStats, suggestions: loadSuggestions, users: loadUsers, lines: loadCustomLines, notify: loadTelegram, network: loadNetwork }[tab];
   load().catch((e) => console.error(e));
   if (tab === "live") liveTimer = setInterval(() => loadLive().catch(() => {}), 10000);
 }

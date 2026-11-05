@@ -7,6 +7,7 @@
 Les lignes ajoutées à la main sont dans custom_lines.py.
 """
 import os
+import re
 import secrets
 from collections import Counter
 from datetime import datetime, timedelta, timezone
@@ -98,9 +99,63 @@ async def live():
             "reliability": round(score, 2),
             "status": status,
             "visible": vehicle.trusted > 0,  # masqué : aucun passager de confiance
+            "users": await _passengers(vehicle.contributors),
         })
     rows.sort(key=lambda r: (r["label"], r["along_m"]))
     return rows
+
+
+async def _passengers(trip_ids) -> list:
+    """Passagers d'un véhicule (identifiant court et fiabilité), pour l'onglet « Fiabilité »."""
+    out = []
+    async for trip in db.trips.find({"id": {"$in": list(trip_ids)}}, {"_id": 0, "user_id": 1}):
+        user = await db.users.find_one({"id": trip["user_id"]}, {"_id": 0, "token_hash": 0}) or {"id": trip["user_id"]}
+        out.append({"id": user["id"], "short": user["id"][:8], "trusted": trust.is_trusted(user)})
+    return out
+
+
+# ------------------------ Fiabilité des utilisateurs ------------------------
+PENALTIES = ("solo", "rejected", "reported", "mocked")
+
+
+@admin.get("/users")
+async def users(q: Optional[str] = None, untrusted_only: bool = True, limit: int = 200):
+    """Utilisateurs pénalisés (ou recherchés par le début de leur identifiant), du moins fiable au plus fiable."""
+    if q:
+        query = {"id": {"$regex": "^" + re.escape(q.strip().lower())}}
+    else:
+        query = {"$or": [{f"rep_{k}": {"$gt": 0}} for k in PENALTIES]}
+    docs = await db.users.find(query, {"_id": 0, "token_hash": 0}).to_list(2000)
+    if untrusted_only and not q:
+        docs = [u for u in docs if not trust.is_trusted(u)]
+    docs.sort(key=trust.reputation)
+    t = trips.now()
+    rows = []
+    for u in docs[:min(limit, 500)]:
+        last = await db.trips.find_one({"user_id": u["id"]}, {"_id": 0, "line_id": 1, "started_ts": 1}, sort=[("started_ts", -1)])
+        rows.append({
+            "id": u["id"], "short": u["id"][:8],
+            "reputation": round(trust.reputation(u), 2), "trusted": trust.is_trusted(u),
+            "confirmed": u.get("rep_confirmed", 0), **{k: u.get(f"rep_{k}", 0) for k in PENALTIES},
+            "trips_7d": await db.trips.count_documents({"user_id": u["id"], "started_ts": {"$gte": t - 7 * 86400}}),
+            "last_trip_at": datetime.fromtimestamp(last["started_ts"], timezone.utc).isoformat() if last else None,
+            "last_line": _line_label(last["line_id"]) if last else None,
+            "reset_at": u.get("rep_reset_at"),
+        })
+    return rows
+
+
+@admin.post("/users/{user_id}/reputation/reset")
+async def reset_reputation(user_id: str):
+    """Efface les pénalités (trajets refusés, signalés, faux GPS, trajets seuls) ; garde les confirmations."""
+    res = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {**{f"rep_{k}": 0 for k in PENALTIES}, "rep_reset_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(404, "Unknown user")
+    trips.invalidate_live()
+    return {"ok": True}
 
 
 @admin.get("/network")
