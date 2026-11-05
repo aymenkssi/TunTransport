@@ -16,6 +16,7 @@ import { formatAge, formatEta, nextTimes } from "@/src/utils/format";
 
 const VEHICLES_REFRESH_MS = 10_000;
 const MODE_TITLES: Record<string, string> = { bus: "Bus", metro: "Métro", rfr: "RFR", train: "Train" };
+const MODE_ICONS: Record<string, "bus" | "subway" | "train"> = { bus: "bus", metro: "subway", rfr: "train", train: "train" };
 
 const SHARE_STATUS: Record<string, string> = {
   checking: "Vérification du trajet… restez quelques secondes dans le véhicule.",
@@ -55,6 +56,20 @@ export default function LineScreen() {
   const dir = line?.directions[shownDirection];
   const shown = useMemo(() => vehicles.filter((v) => v.direction === shownDirection), [vehicles, shownDirection]);
   const stopsById = useMemo(() => new Map(line?.stops.map((s) => [s.id, s]) ?? []), [line]);
+  // Live vehicles between two stops: index of the last stop each one has passed (bold in the list,
+  // with an arrow towards the next stop).
+  const passed = useMemo(() => {
+    const out = new Map<number, number>(); // stop index -> number of vehicles just after it
+    if (!dir) return out;
+    for (const v of shown) {
+      let last = -1;
+      dir.stops.forEach((s, i) => {
+        if (s.along_m <= v.along_m) last = i;
+      });
+      if (last >= 0) out.set(last, (out.get(last) ?? 0) + 1);
+    }
+    return out;
+  }, [dir, shown]);
   const color = line?.color || (line ? modeColors[line.mode] : colors.brand);
 
   const mapData = useMemo<MapData | null>(() => {
@@ -245,13 +260,36 @@ export default function LineScreen() {
           if (!stop) return null;
           const times = nextTimes(line.timetable[stop.id]?.[dir.headsign], now);
           const selected = item.id === selectedStop;
+          const live = passed.get(index) ?? 0;
+          const next = live ? stopsById.get(dir.stops[index + 1]?.id ?? "") : undefined;
           return (
-            <Pressable style={[styles.stop, selected && styles.stopSelected]} onPress={() => onSelectStop(item.id)}>
+            <Pressable
+              style={[styles.stop, selected && styles.stopSelected]}
+              onPress={() => onSelectStop(item.id)}
+              accessibilityLabel={live ? `${stop.name} : bus en direct passé, vers ${next?.name ?? "le terminus"}` : stop.name}
+            >
               <View style={styles.rail}>
                 <View style={[styles.railLine, { backgroundColor: color }, index === 0 && styles.railFirst, index === dir.stops.length - 1 && styles.railLast]} />
-                <View style={[styles.railDot, { borderColor: color }]} />
+                <View style={[styles.railDot, { borderColor: color }, live > 0 && { backgroundColor: color }]} />
+                {live > 0 && next && (
+                  <View style={[styles.railArrow, { backgroundColor: colors.brand }]}>
+                    <Ionicons name="arrow-down" size={12} color={colors.onBrand} />
+                  </View>
+                )}
               </View>
-              <Text style={[styles.stopName, selected && styles.stopNameSelected]} numberOfLines={1}>{stop.name}</Text>
+              <View style={styles.stopBody}>
+                <Text style={[styles.stopName, (selected || live > 0) && styles.stopNameSelected]} numberOfLines={1}>{stop.name}</Text>
+                {live > 0 && (
+                  <View style={styles.liveRow}>
+                    <Ionicons name={MODE_ICONS[line.mode]} size={13} color={colors.brand} />
+                    <Text style={styles.liveText} numberOfLines={1}>
+                      {live > 1 ? `${live} véhicules en direct` : "En direct"}
+                      {next ? " → " : " : terminus"}
+                      {next ? <Text style={styles.liveNext}>{next.name}</Text> : null}
+                    </Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.sub}>{times.join("  ")}</Text>
             </Pressable>
           );
@@ -303,6 +341,11 @@ const makeStyles = (c: Colors) =>
     railFirst: { top: "50%" },
     railLast: { bottom: "50%" },
     railDot: { width: 14, height: 14, borderRadius: 7, borderWidth: 3, backgroundColor: c.surface },
-    stopName: { flex: 1, color: c.onSurface, fontSize: type.base },
+    stopBody: { flex: 1, paddingVertical: 4 },
+    stopName: { color: c.onSurface, fontSize: type.base },
+    railArrow: { position: "absolute", bottom: -9, width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center", zIndex: 2 },
+    liveRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1 },
+    liveText: { color: c.brand, fontSize: type.sm, fontWeight: "700", flexShrink: 1 },
+    liveNext: { color: c.onSurface, fontWeight: "600" },
     stopNameSelected: { fontWeight: "700" },
   });
