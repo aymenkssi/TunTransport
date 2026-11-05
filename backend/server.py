@@ -1,4 +1,5 @@
 """TunTransport API : utilisateurs anonymes, réseau de lignes, trajets partagés et véhicules en direct."""
+import asyncio
 import logging
 import os
 import secrets
@@ -77,6 +78,7 @@ async def delete_me(user: dict = Depends(current_user)):
     """Supprime l'utilisateur, ses trajets et sa position en cours (bouton « Supprimer mes données »)."""
     trip_ids = [t["id"] async for t in db.trips.find({"user_id": user["id"]}, {"id": 1})]
     await db.contributions.delete_many({"trip_id": {"$in": trip_ids}})
+    trips.invalidate_live()
     await db.trips.delete_many({"user_id": user["id"]})
     await db.suggestions.delete_many({"user_id": user["id"]})
     await db.users.delete_one({"id": user["id"]})
@@ -105,8 +107,41 @@ app.add_middleware(
 )
 
 
+# L'API tourne avec plusieurs processus (API_WORKERS) : chacun garde le réseau en mémoire. Toutes
+# les SYNC_EVERY_S secondes, il recharge ce qu'un autre processus ou un réimport a changé.
+SYNC_EVERY_S = 15
+_sync_task: Optional[asyncio.Task] = None
+
+
+def _mtime(var: str, default) -> float:
+    try:
+        return os.stat(os.environ.get(var) or default).st_mtime
+    except OSError:
+        return 0.0
+
+
+async def _sync_loop() -> None:
+    seen = {"network": _mtime("NETWORK_FILE", network.DEFAULT_FILE), "places": _mtime("PLACES_FILE", geocoder.DEFAULT_FILE)}
+    while True:
+        await asyncio.sleep(SYNC_EVERY_S)
+        try:
+            current = _mtime("NETWORK_FILE", network.DEFAULT_FILE)
+            if current != seen["network"]:
+                seen["network"] = current
+                network.load()
+                await custom_lines.apply()
+            current = _mtime("PLACES_FILE", geocoder.DEFAULT_FILE)
+            if current != seen["places"]:
+                seen["places"] = current
+                geocoder.load()
+            await custom_lines.sync()
+        except Exception:
+            logger.exception("Worker sync failed")
+
+
 @app.on_event("startup")
 async def startup():
+    global _sync_task
     network.load()
     geocoder.load()
     await db.users.create_index("id", unique=True)
@@ -115,8 +150,11 @@ async def startup():
     await trust.setup()
     await suggestions.setup()
     await custom_lines.setup()
+    _sync_task = asyncio.create_task(_sync_loop())
 
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    if _sync_task:
+        _sync_task.cancel()
     client.close()

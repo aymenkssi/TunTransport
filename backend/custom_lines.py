@@ -137,8 +137,30 @@ async def build(line_id: str, spec: CustomLineIn) -> dict:
 
 
 # ------------------------ Réseau ------------------------
+_version_seen = None
+
+
+async def _version() -> int:
+    doc = await db.settings.find_one({"id": "custom_lines"}) or {}
+    return doc.get("version", 0)
+
+
+async def _changed() -> None:
+    """Après une modification : ce processus l'applique, les autres la voient via la version."""
+    await db.settings.update_one({"id": "custom_lines"}, {"$inc": {"version": 1}}, upsert=True)
+    await apply()
+
+
+async def sync() -> None:
+    """Appelé régulièrement par chaque processus de l'API : recharge si un autre a modifié les lignes."""
+    if await _version() != _version_seen:
+        await apply()
+
+
 async def apply() -> None:
     """Recharge les lignes de l'admin dans le réseau servi."""
+    global _version_seen
+    _version_seen = await _version()
     docs = await db.custom_lines.find({}, {"_id": 0}).to_list(1000)
     network.set_custom([d["line"] for d in docs if not d.get("hidden")], {d["id"] for d in docs if d.get("hidden")})
 
@@ -197,7 +219,7 @@ async def _save(line_id: str, spec: CustomLineIn) -> dict:
                   "updated_at": datetime.now(timezone.utc)}},
         upsert=True,
     )
-    await apply()
+    await _changed()
     return line
 
 
@@ -234,7 +256,7 @@ async def delete_custom_line(line_id: str):
         )
     else:
         await db.custom_lines.delete_one({"id": line_id})
-    await apply()
+    await _changed()
     return {"ok": True}
 
 
@@ -242,5 +264,5 @@ async def delete_custom_line(line_id: str):
 async def restore_custom_line(line_id: str):
     """Annule les modifications de l'admin : la ligne du fichier revient telle quelle."""
     await db.custom_lines.delete_one({"id": line_id})
-    await apply()
+    await _changed()
     return {"ok": True}

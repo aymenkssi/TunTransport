@@ -104,6 +104,7 @@ async def _active_trip(trip_id: str, user: dict) -> dict:
 
 async def _end(trip: dict, reason: str) -> None:
     await db.contributions.delete_one({"trip_id": trip["id"]})
+    invalidate_live()
     await db.trips.update_one(
         {"id": trip["id"], "ended_at": None}, {"$set": {"ended_at": iso(now()), "end_reason": reason}}
     )
@@ -125,8 +126,32 @@ def visible(vehicles: List[vh.Vehicle]) -> List[vh.Vehicle]:
     return [v for v in vehicles if v.trusted > 0]
 
 
+# Les véhicules visibles de tout le réseau sont recalculés au plus toutes les LIVE_CACHE_S et
+# partagés par tous les écrans qui les demandent (carte, lignes, compteur, itinéraires).
+# Toute écriture de position dans ce processus vide le cache ; les autres le voient en 2 s au plus.
+LIVE_CACHE_S = 2.0
+_live_cache: dict = {"at": 0.0, "t": None, "vehicles": None}
+
+
+def invalidate_live() -> None:
+    _live_cache["vehicles"] = None
+
+
+async def live_vehicles(t: float, line_id: Optional[str] = None) -> List[vh.Vehicle]:
+    """Véhicules visibles (non expirés) à l'instant t, éventuellement d'une seule ligne."""
+    c = _live_cache
+    fresh = (c["vehicles"] is not None and time.monotonic() - c["at"] < LIVE_CACHE_S
+             and abs(t - c["t"]) < LIVE_CACHE_S)
+    if not fresh:
+        vehicles = [v for v in visible(vh.cluster_vehicles(await _fresh_contributions(), t))
+                    if vh.reliability(v, t)[1] != "expiré"]
+        c.update(at=time.monotonic(), t=t, vehicles=vehicles)
+    return [v for v in c["vehicles"] if line_id is None or v.line_id == line_id]
+
+
 async def _reject(trip: dict, reason: str) -> "PositionResult":
     await db.contributions.delete_one({"trip_id": trip["id"]})
+    invalidate_live()
     await db.trips.update_one({"id": trip["id"]}, {"$inc": {"rejected_count": 1}})
     return PositionResult(status="rejected", reason=reason)
 
@@ -190,6 +215,7 @@ async def post_positions(trip_id: str, trace: network.Trace, user: dict = Depend
         # Plus rien n'est publié dès que la trace n'est plus validée.
         if result.reason == "too_short":
             await db.contributions.delete_one({"trip_id": trip_id})
+            invalidate_live()
             return PositionResult(status="checking")
         return await _reject(trip, REASONS[result.reason])
 
@@ -214,6 +240,7 @@ async def post_positions(trip_id: str, trace: network.Trace, user: dict = Depend
         }},
         upsert=True,
     )
+    invalidate_live()
     await db.trips.update_one({"id": trip_id}, {"$inc": {"on_route_count": 1}})
     if not trip.get("on_route_count"):  # première position validée de ce trajet
         import notify
@@ -270,7 +297,7 @@ def _vehicle_out(line: "network.LoadedLine", vehicle: vh.Vehicle, t: float, stop
 async def line_vehicles(line_id: str, stop_id: Optional[str] = None):
     line = network.current().line(line_id)
     t = now()
-    out = [VehicleOut(**v) for vehicle in visible(vh.cluster_vehicles(await _fresh_contributions(line_id), t))
+    out = [VehicleOut(**v) for vehicle in await live_vehicles(t, line_id)
            if (v := _vehicle_out(line, vehicle, t, stop_id))]
     if stop_id:
         out.sort(key=lambda v: (v.eta_s is None, v.eta_s or 0))
@@ -283,7 +310,7 @@ async def network_vehicles():
     t = now()
     net = network.current()
     out = []
-    for vehicle in visible(vh.cluster_vehicles(await _fresh_contributions(), t)):
+    for vehicle in await live_vehicles(t):
         line = net.lines.get(vehicle.line_id)
         v = _vehicle_out(line, vehicle, t) if line else None
         if v:
@@ -297,9 +324,8 @@ async def live_counts():
     """Nombre de véhicules visibles par ligne, pour les badges de la liste des lignes."""
     t = now()
     counts: Dict[str, int] = {}
-    for vehicle in visible(vh.cluster_vehicles(await _fresh_contributions(), t)):
-        if vh.reliability(vehicle, t)[1] != "expiré":
-            counts[vehicle.line_id] = counts.get(vehicle.line_id, 0) + 1
+    for vehicle in await live_vehicles(t):
+        counts[vehicle.line_id] = counts.get(vehicle.line_id, 0) + 1
     return counts
 
 
@@ -312,7 +338,7 @@ class LiveSummary(BaseModel):
 async def live_summary():
     """Compteur affiché en haut de chaque écran de l'application."""
     t = now()
-    shown = [v for v in visible(vh.cluster_vehicles(await _fresh_contributions(), t)) if vh.reliability(v, t)[1] != "expiré"]
+    shown = await live_vehicles(t)
     return LiveSummary(sharers=sum(len(v.contributors) for v in shown), vehicles=len(shown))
 
 

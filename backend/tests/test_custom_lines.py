@@ -47,3 +47,18 @@ def test_imported_lines_cannot_be_edited_but_survive_a_reload(api, monkeypatch):
 def test_invalid_line_is_refused(api):
     assert api.post("/api/admin/custom-lines", json=spec(stops=STOPS[:1]), headers=ADMIN).status_code == 422
     assert api.post("/api/admin/custom-lines", json=spec(color="red"), headers=ADMIN).status_code == 422
+
+
+def test_other_workers_pick_up_changes(api, monkeypatch):
+    """Un autre processus de l'API a ajouté une ligne : sync() la charge ici."""
+    import server
+
+    monkeypatch.setattr(custom_lines, "_road_shapes", no_osrm)
+    api.post("/api/admin/custom-lines", json=spec(), headers=ADMIN)
+    custom_lines.network.set_custom([], set())  # ce processus ne la voit plus…
+    assert api.get("/api/lines/x999").status_code == 404
+    api.portal.call(custom_lines.sync)  # …même version : rien à faire
+    assert api.get("/api/lines/x999").status_code == 404
+    api.portal.call(server.db.settings.update_one, {"id": "custom_lines"}, {"$inc": {"version": 1}})
+    api.portal.call(custom_lines.sync)  # un autre processus a modifié les lignes
+    assert api.get("/api/lines/x999").status_code == 200

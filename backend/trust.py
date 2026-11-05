@@ -189,6 +189,9 @@ async def report_vehicle(payload: ReportIn, user: dict = Depends(current_user)):
 async def hide_trips(trip_ids: List[str]) -> None:
     """Masque les positions de ces trajets et pénalise leurs auteurs (une fois par trajet)."""
     await db.contributions.update_many({"trip_id": {"$in": trip_ids}}, {"$set": {"hidden": True}})
+    import trips  # importé ici : trips dépend de ce module
+
+    trips.invalidate_live()
     async for trip in db.trips.find({"id": {"$in": trip_ids}, "reported": {"$ne": True}}):
         await db.trips.update_one({"id": trip["id"]}, {"$set": {"reported": True}})
         await db.users.update_one({"id": trip["user_id"]}, {"$inc": {"rep_reported": 1}})

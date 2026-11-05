@@ -12,6 +12,7 @@ Modèle d'attente à un arrêt, du plus fiable au moins fiable :
                    si la ligne circule encore, l'attente est estimée par la fréquence habituelle du mode.
 Recherche : Dijkstra sur les arrêts, dépendant de l'heure, avec une pénalité par correspondance.
 """
+import asyncio
 import heapq
 import math
 import unicodedata
@@ -464,20 +465,29 @@ async def search_stops(q: str, limit: int = 12):
     return out
 
 
+_plan_slot = asyncio.Semaphore(1)
+
+
 @router.post("/routes/plan", response_model=List[Itinerary], response_model_by_alias=True)
 async def plan(payload: PlanRequest):
-    g = graph()
-    origin = _resolve(g, payload.origin, "Départ")
-    dest = _resolve(g, payload.destination, "Arrivée")
     now = trips.now()
     t0 = now if payload.depart_at is None else payload.depart_at
     if not now - 600 <= t0 <= now + MAX_DEPART_AHEAD_S:
         raise HTTPException(422, "depart_at must be between now and 3 days ahead")
     # Les véhicules en direct ne servent que pour un départ proche.
-    live = [] if t0 - now > MAX_LIVE_HORIZON_S else [
-        v for v in trips.visible(vh.cluster_vehicles(await trips._fresh_contributions(), now))
-        if vh.reliability(v, now)[1] != "expiré"]
+    live = [] if t0 - now > MAX_LIVE_HORIZON_S else await trips.live_vehicles(now)
+    # Le calcul (plusieurs centaines de millisecondes) tourne à part : l'API continue de répondre
+    # aux autres requêtes (positions, carte) pendant ce temps.
+    # Un calcul à la fois par processus : les suivants attendent leur tour plutôt que de se disputer
+    # le processeur avec les requêtes courtes.
+    async with _plan_slot:
+        return await asyncio.to_thread(_plan, payload, now, t0, live)
 
+
+def _plan(payload: PlanRequest, now: float, t0: float, live: List[vh.Vehicle]) -> List[Itinerary]:
+    g = graph()
+    origin = _resolve(g, payload.origin, "Départ")
+    dest = _resolve(g, payload.destination, "Arrivée")
     results = _transit(g, origin, dest, t0, now, live)
     if not results:
         # Plus rien ne circule (la nuit) : premier trajet possible.

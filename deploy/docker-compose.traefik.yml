@@ -35,6 +35,8 @@ services:
       OSRM_CAR_URL: ${OSRM_CAR_URL:-https://routing.openstreetmap.de/routed-car}
       OSRM_FOOT_URL: ${OSRM_FOOT_URL:-https://routing.openstreetmap.de/routed-foot}
       ADMIN_TOKEN: ${ADMIN_TOKEN}
+      # Processus de l'API (un par cœur utilisé) ; 3 par défaut.
+      API_WORKERS: ${API_WORKERS:-3}
     volumes:
       - ./data:/app/data:ro
     networks: [internal, traefik]

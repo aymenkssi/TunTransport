@@ -12,4 +12,5 @@ RUN useradd --create-home --uid 10001 app
 USER app
 
 EXPOSE 8001
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001", "--proxy-headers", "--forwarded-allow-ips", "*"]
+# API_WORKERS processus (3 par défaut) : un par cœur utilisé ; ils se synchronisent (voir server.py).
+CMD ["sh", "-c", "exec uvicorn server:app --host 0.0.0.0 --port 8001 --proxy-headers --forwarded-allow-ips '*' --workers ${API_WORKERS:-3}"]
