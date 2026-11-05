@@ -110,7 +110,26 @@ END_REASONS = {
     "timeout": "durée maximale atteinte",
     "replaced": "remplacé par un nouveau partage",
     "mocked": "position simulée (faux GPS)",
+    "silent": "plus de nouvelles du téléphone (application fermée, téléphone éteint ou sans réseau)",
 }
+# Sans aucune position pendant SILENT_AFTER_S, un trajet est clos (l'application, elle, ne relance
+# un partage interrompu que dans les 10 minutes).
+SILENT_AFTER_S = 600
+
+
+def last_activity(trip: dict) -> float:
+    return max(trip.get("last_position_ts") or 0.0, trip.get("started_ts") or 0.0)
+
+
+async def close_silent_trips() -> int:
+    """Clôt les trajets restés ouverts sans nouvelles du téléphone ; appelé régulièrement par server.py."""
+    limit = now() - SILENT_AFTER_S
+    closed = 0
+    async for trip in db.trips.find({"ended_at": None, "started_ts": {"$lt": limit}, "last_position_ts": {"$lt": limit}},
+                                    {"_id": 0, "track": 0}):
+        await _end(trip, "silent")
+        closed += 1
+    return closed
 
 
 async def _log(trip: dict, kind: str, reason: Optional[str] = None, **data) -> None:

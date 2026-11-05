@@ -160,7 +160,7 @@ async def reset_reputation(user_id: str):
 
 # ------------------------ Journal des trajets ------------------------
 TRIP_FILTERS = {
-    "active": {"ended_at": None},
+    "active": {"ended_at": None},  # affiné ci-dessous : nouvelles du téléphone depuis moins de 5 min
     "validated": {"on_route_count": {"$gt": 0}},
     "rejected": {"rejected_count": {"$gt": 0}},
     "never_validated": {"on_route_count": 0},
@@ -182,6 +182,11 @@ async def trip_log(hours: int = 24, status: Optional[str] = None, line: Optional
     if user:
         query["user_id"] = {"$regex": "^" + re.escape(user.strip().lower())}
     docs = await db.trips.find(query, {"_id": 0, "track": 0}).sort("started_ts", -1).to_list(min(limit, 500))
+    if status == "active":
+        docs = [d for d in docs if t - trips.last_activity(d) <= vh.EXPIRED_AGE_S]
+    published = {c["trip_id"] async for c in db.contributions.find(
+        {"trip_id": {"$in": [d["id"] for d in docs]}, "t": {"$gte": t - vh.EXPIRED_AGE_S}, "hidden": {"$ne": True}},
+        {"_id": 0, "trip_id": 1})}
     reasons = Counter(e.get("reason") for d in docs for e in d.get("events", []) if e["kind"] == "rejected")
     rows = []
     for d in docs:
@@ -197,6 +202,12 @@ async def trip_log(hours: int = 24, status: Optional[str] = None, line: Optional
             "end_reason": trips.END_REASONS.get(d.get("end_reason"), d.get("end_reason")),
             "validated": d.get("on_route_count", 0), "refused": d.get("rejected_count", 0),
             "confirmed": d.get("confirmed", False), "last_reject_reason": d.get("last_reject_reason"),
+            # live : position affichée ; active : le téléphone envoie mais rien n'est affiché (vérification,
+            # refus, masqué) ; silent : plus de nouvelles depuis 5 min ; ended : terminé.
+            "state": "ended" if ended else "live" if d["id"] in published else (
+                "active" if t - trips.last_activity(d) <= vh.EXPIRED_AGE_S else "silent"),
+            "last_seen_s": round(t - trips.last_activity(d)),
+            "last_event": (d.get("events") or [{}])[-1].get("kind"),
             "events": d.get("events", []),
         })
     return {"trips": rows, "reasons": [{"reason": r, "count": n} for r, n in reasons.most_common()]}

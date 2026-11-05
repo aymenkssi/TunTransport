@@ -135,6 +135,7 @@ async def _sync_loop() -> None:
                 seen["places"] = current
                 geocoder.load()
             await custom_lines.sync()
+            await trips.close_silent_trips()
         except Exception:
             logger.exception("Worker sync failed")
 

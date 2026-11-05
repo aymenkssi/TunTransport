@@ -142,11 +142,12 @@
 
     <div data-panel="trips" hidden>
       <h2>Journal des trajets</h2>
-      <p class="hint">Chaque partage, avec ce qui s'est passé : vérification, position validée, déviation, refus (avec la raison et les mesures GPS) et fin. Un même état répété n'apparaît qu'une fois, avec « ×N ». Cliquez sur un trajet pour voir sa chronologie.</p>
+      <p class="hint">Chaque partage, avec ce qui s'est passé : vérification, position validée, déviation, refus (avec la raison et les mesures GPS) et fin. Un même état répété n'apparaît qu'une fois, avec « ×N ». Cliquez sur un trajet pour voir sa chronologie.<br>
+      État : <strong>en direct</strong> = visible dans l'onglet En direct ; <strong>actif</strong> = le téléphone envoie mais rien n'est affiché (vérification, refus) ; <strong>sans nouvelles</strong> = application fermée, téléphone éteint ou sans réseau (le trajet est clos au bout de 10 min).</p>
       <div class="filters" style="align-items:center">
         <select id="tl-hours" style="width:auto"><option value="6">6 h</option><option value="24" selected>24 h</option><option value="168">7 jours</option><option value="720">30 jours</option></select>
         <select id="tl-status" style="width:auto">
-          <option value="">Tous les trajets</option><option value="active">En cours</option><option value="validated">Validés au moins une fois</option>
+          <option value="">Tous les trajets</option><option value="active">En cours (nouvelles &lt; 5 min)</option><option value="validated">Validés au moins une fois</option>
           <option value="rejected">Avec des refus</option><option value="never_validated">Jamais validés</option><option value="mocked">Faux GPS</option>
         </select>
         <input id="tl-line" placeholder="Ligne (ex. 347, TGM)" style="max-width:170px">
@@ -448,6 +449,17 @@ function eventDetails(e) {
   return bits.join(" · ");
 }
 
+// État réel d'un trajet ouvert : affiché en direct, actif mais non affiché, ou sans nouvelles.
+function tripState(x) {
+  if (x.state === "ended") return esc(x.end_reason || "terminé");
+  if (x.state === "live") return '<span class="pill fiable">en direct</span>';
+  if (x.state === "active") {
+    const why = { checking: "vérification en cours", rejected: "refusé", started: "en attente de positions" }[x.last_event] || "non affiché";
+    return `<span class="pill probable">actif · ${esc(why)}</span>`;
+  }
+  return `<span class="pill obsolète">sans nouvelles depuis ${fmtDur(x.last_seen_s)}</span><br><span class="muted">clos automatiquement après 10 min</span>`;
+}
+
 async function loadTrips() {
   const params = new URLSearchParams({ hours: $("tl-hours").value });
   if ($("tl-status").value) params.set("status", $("tl-status").value);
@@ -461,7 +473,7 @@ async function loadTrips() {
       <td><button class="user-link" data-user="${esc(x.user_id)}"><code>${esc(x.user)}</code></button></td>
       <td class="n">${fmtDur(x.duration_s)}</td><td class="n">${x.validated}</td><td class="n">${x.refused}</td>
       <td>${x.last_reject_reason ? `<span class="err">${esc(x.last_reject_reason)}</span>` : '<span class="muted">—</span>'}</td>
-      <td>${x.active ? '<span class="pill fiable">en cours</span>' : esc(x.end_reason || "")}</td></tr>
+      <td>${tripState(x)}</td></tr>
       <tr class="tl-detail" data-for="${i}" hidden><td colspan="8">${x.events.map((e) => `<div style="padding:3px 0">
         <span class="muted">${esc(fmtTime(e.at))}${e.n > 1 ? ` → ${esc(fmtTime(e.last))}` : ""}</span>
         ${KIND[e.kind]?.[0] || "•"} <strong>${esc(KIND[e.kind]?.[1] || e.kind)}</strong>${e.n > 1 ? ` <span class="pill read">×${e.n}</span>` : ""}
