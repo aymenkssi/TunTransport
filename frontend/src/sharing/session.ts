@@ -16,6 +16,7 @@ const TRACE_WINDOW_S = 60;
 const MAX_FIXES = 30;
 const AUTO_STOP_OFF_ROUTE_MS = 2 * 60_000; // hors de la ligne depuis 2 min : arrêt automatique
 const MAX_TRIP_MS = 2 * 3600_000;
+const RESUME_WITHIN_MS = 10 * 60_000; // au-delà, le partage interrompu n'est pas relancé
 
 export type ShareStatus = "checking" | "on_route" | "rejected" | "offline";
 
@@ -151,15 +152,27 @@ export async function resumeSharing(): Promise<void> {
   if (Platform.OS === "web") return;
   const current = await restoreShare();
   if (!current) return;
-  if (Date.now() - current.startedAt > MAX_TRIP_MS) {
-    await stopSharing();
-    return;
-  }
   try {
     if (await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK)) return;
+    // Android refuses (and closes the app) to start a location service without the permission:
+    // "Only this time" ends when the app is closed. Without permission, or after a long pause
+    // (the rider has probably got off), the trip ends instead of resuming.
+    const permission = await Location.getForegroundPermissionsAsync();
+    const lastActivity = Math.max(current.lastSentAt, current.startedAt);
+    if (
+      !permission.granted ||
+      !(await Location.hasServicesEnabledAsync()) ||
+      Date.now() - current.startedAt > MAX_TRIP_MS ||
+      Date.now() - lastActivity > RESUME_WITHIN_MS
+    ) {
+      await stopSharing();
+      return;
+    }
     await save({ ...current, lastOnRouteAt: Date.now(), fixes: [] });
     await startUpdates();
-  } catch {}
+  } catch {
+    await stopSharing().catch(() => {});
+  }
 }
 
 export async function stopSharing(): Promise<void> {
