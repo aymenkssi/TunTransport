@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Dict, List, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 
 import network
@@ -102,12 +102,61 @@ async def _active_trip(trip_id: str, user: dict) -> dict:
     return trip
 
 
+# ------------------------ Journal des trajets ------------------------
+# Un événement à chaque changement d'état (pas à chaque position) : onglet « Trajets » de l'admin.
+MAX_EVENTS = 60
+END_REASONS = {
+    "user": "arrêté par le voyageur (ou automatiquement, hors de la ligne)",
+    "timeout": "durée maximale atteinte",
+    "replaced": "remplacé par un nouveau partage",
+    "mocked": "position simulée (faux GPS)",
+}
+
+
+async def _log(trip: dict, kind: str, reason: Optional[str] = None, **data) -> None:
+    """Ajoute un événement ; le même état répété n'est compté qu'une fois (champ n)."""
+    events = trip.get("events") or []
+    key = f"{kind}|{reason or ''}"
+    t = now()
+    if events and kind not in ("started", "ended") and f"{events[-1]['kind']}|{events[-1].get('reason') or ''}" == key:
+        i = len(events) - 1
+        await db.trips.update_one({"id": trip["id"]}, {"$inc": {f"events.{i}.n": 1}, "$set": {f"events.{i}.last": iso(t)}})
+        return
+    event = {"at": iso(t), "kind": kind, "n": 1, **({"reason": reason} if reason else {}),
+             **{k: (round(v, 1) if isinstance(v, float) else v) for k, v in data.items() if v is not None}}
+    update: dict = {"$push": {"events": {"$each": [event], "$slice": -MAX_EVENTS}}}
+    if kind == "rejected":
+        update["$set"] = {"last_reject_reason": reason}
+    await db.trips.update_one({"id": trip["id"]}, update)
+    trip["events"] = (events + [event])[-MAX_EVENTS:]
+
+
+def _trace_info(received: int, fixes: list, result=None) -> dict:
+    """Mesures utiles pour comprendre un refus : nombre de points, précision GPS, écart à la ligne."""
+    precise = [f for f in fixes if f.accuracy_m <= 50]
+    info = {"fixes": received, "precise": len(precise)}
+    if fixes:
+        info["accuracy_m"] = float(sorted(f.accuracy_m for f in fixes)[len(fixes) // 2])
+    if result is not None:
+        if result.mean_offset_m:
+            info["offset_m"] = float(result.mean_offset_m)
+        if result.speed_mps:
+            info["speed_kmh"] = float(result.speed_mps * 3.6)
+        if result.along_m:
+            info["along_m"] = round(result.along_m)
+    return info
+
+
 async def _end(trip: dict, reason: str) -> None:
     await db.contributions.delete_one({"trip_id": trip["id"]})
     invalidate_live()
-    await db.trips.update_one(
+    res = await db.trips.update_one(
         {"id": trip["id"], "ended_at": None}, {"$set": {"ended_at": iso(now()), "end_reason": reason}}
     )
+    if res.modified_count:
+        fresh = await db.trips.find_one({"id": trip["id"]}, {"_id": 0, "events": 1, "on_route_count": 1, "rejected_count": 1}) or {}
+        await _log({"id": trip["id"], "events": fresh.get("events")}, "ended", END_REASONS.get(reason, reason),
+                   validated=fresh.get("on_route_count", 0), refused=fresh.get("rejected_count", 0))
     await trust.settle_trip(trip["id"])
 
 
@@ -149,7 +198,8 @@ async def live_vehicles(t: float, line_id: Optional[str] = None) -> List[vh.Vehi
     return [v for v in c["vehicles"] if line_id is None or v.line_id == line_id]
 
 
-async def _reject(trip: dict, reason: str) -> "PositionResult":
+async def _reject(trip: dict, reason: str, info: Optional[dict] = None) -> "PositionResult":
+    await _log(trip, "rejected", reason, **(info or {}))
     await db.contributions.delete_one({"trip_id": trip["id"]})
     invalidate_live()
     await db.trips.update_one({"id": trip["id"]}, {"$inc": {"rejected_count": 1}})
@@ -158,7 +208,8 @@ async def _reject(trip: dict, reason: str) -> "PositionResult":
 
 # ------------------------ Routes ------------------------
 @router.post("/trips", response_model=TripStarted)
-async def start_trip(payload: TripStart, user: dict = Depends(current_user)):
+async def start_trip(payload: TripStart, user: dict = Depends(current_user),
+                     x_app_version: Optional[str] = Header(default=None)):
     line = network.current().line(payload.line_id)
     t = now()
     day_start = t - t % 86400
@@ -182,6 +233,9 @@ async def start_trip(payload: TripStart, user: dict = Depends(current_user)):
         "track": [],
     }
     await db.trips.insert_one(trip)
+    await _log(trip, "started", None, line=line.data["short_name"] or line.data["long_name"],
+               headsign=line.data["directions"][payload.direction]["headsign"],
+               reputation=round(trust.reputation(user), 2), app=(x_app_version or "")[:20] or None)
     import notify  # ici : notify dépend du module admin, qui importe celui-ci
 
     notify.trip_started(line, payload.direction, await db.trips.count_documents({"started_ts": {"$gte": day_start}}))
@@ -200,6 +254,7 @@ async def post_positions(trip_id: str, trace: network.Trace, user: dict = Depend
     if any(f.mocked for f in trace.fixes):
         # Faux GPS : le trajet s'arrête et la réputation de l'utilisateur chute.
         await trust.penalize_mocked(user["id"])
+        await _log(trip, "rejected", trust.REASONS["mocked"], fixes=len(trace.fixes))
         await _end(trip, "mocked")
         return PositionResult(status="rejected", reason=trust.REASONS["mocked"])
 
@@ -214,17 +269,18 @@ async def post_positions(trip_id: str, trace: network.Trace, user: dict = Depend
     if not result.ok:
         # Plus rien n'est publié dès que la trace n'est plus validée.
         if result.reason == "too_short":
+            await _log(trip, "checking", "pas encore assez de points GPS précis", **_trace_info(len(trace.fixes), fixes))
             await db.contributions.delete_one({"trip_id": trip_id})
             invalidate_live()
             return PositionResult(status="checking")
-        return await _reject(trip, REASONS[result.reason])
+        return await _reject(trip, REASONS[result.reason], _trace_info(len(trace.fixes), fixes, result))
 
     if not detour:  # en déviation, la position sur la ligne est approximative : pas de contrôle de mouvement
         track = trust.update_track(trip.get("track", []), t, result.along_m)
         await db.trips.update_one({"id": trip_id}, {"$set": {"track": track, "last_on_line_ts": t}})
         problem = trust.motion_problem(track, t, shape.length_m)
         if problem:
-            return await _reject(trip, trust.REASONS[problem])
+            return await _reject(trip, trust.REASONS[problem], _trace_info(len(trace.fixes), fixes, result))
 
     await db.contributions.update_one(
         {"trip_id": trip_id},
@@ -242,6 +298,8 @@ async def post_positions(trip_id: str, trace: network.Trace, user: dict = Depend
     )
     invalidate_live()
     await db.trips.update_one({"id": trip_id}, {"$inc": {"on_route_count": 1}})
+    await _log(trip, "detour" if detour else "on_route", DETOUR_REASON if detour else None,
+               **_trace_info(len(trace.fixes), fixes, result), trusted=trust.is_trusted(user))
     if not trip.get("on_route_count"):  # première position validée de ce trajet
         import notify
 

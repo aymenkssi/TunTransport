@@ -158,6 +158,50 @@ async def reset_reputation(user_id: str):
     return {"ok": True}
 
 
+# ------------------------ Journal des trajets ------------------------
+TRIP_FILTERS = {
+    "active": {"ended_at": None},
+    "validated": {"on_route_count": {"$gt": 0}},
+    "rejected": {"rejected_count": {"$gt": 0}},
+    "never_validated": {"on_route_count": 0},
+    "mocked": {"end_reason": "mocked"},
+}
+
+
+@admin.get("/trips")
+async def trip_log(hours: int = 24, status: Optional[str] = None, line: Optional[str] = None,
+                   user: Optional[str] = None, limit: int = 200):
+    """Trajets récents avec leur journal (démarrage, vérification, refus et raison, déviation, fin)."""
+    t = trips.now()
+    query: dict = {"started_ts": {"$gte": t - min(max(hours, 1), 24 * 30) * 3600}}
+    query.update(TRIP_FILTERS.get(status or "", {}))
+    if line:
+        wanted = line.strip().lower()
+        query["line_id"] = {"$in": [l.id for l in network.current().lines.values()
+                                    if l.id.lower() == wanted or (l.data["short_name"] or "").lower() == wanted]}
+    if user:
+        query["user_id"] = {"$regex": "^" + re.escape(user.strip().lower())}
+    docs = await db.trips.find(query, {"_id": 0, "track": 0}).sort("started_ts", -1).to_list(min(limit, 500))
+    reasons = Counter(e.get("reason") for d in docs for e in d.get("events", []) if e["kind"] == "rejected")
+    rows = []
+    for d in docs:
+        line_data = network.current().lines.get(d["line_id"])
+        ended = d.get("ended_at")
+        end_ts = datetime.fromisoformat(ended).timestamp() if ended else t
+        rows.append({
+            "id": d["id"], "user": d["user_id"][:8], "user_id": d["user_id"],
+            "line": _line_label(d["line_id"]),
+            "headsign": line_data.data["directions"][d["direction"]]["headsign"] if line_data else "",
+            "started_at": d["started_at"], "ended_at": ended, "active": not ended,
+            "duration_s": round(end_ts - d["started_ts"]),
+            "end_reason": trips.END_REASONS.get(d.get("end_reason"), d.get("end_reason")),
+            "validated": d.get("on_route_count", 0), "refused": d.get("rejected_count", 0),
+            "confirmed": d.get("confirmed", False), "last_reject_reason": d.get("last_reject_reason"),
+            "events": d.get("events", []),
+        })
+    return {"trips": rows, "reasons": [{"reason": r, "count": n} for r, n in reasons.most_common()]}
+
+
 @admin.get("/network")
 async def network_info():
     net = network.current()

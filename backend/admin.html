@@ -95,6 +95,7 @@
       <button role="tab" data-tab="live" aria-selected="true">En direct</button>
       <button role="tab" data-tab="stats" aria-selected="false">Statistiques</button>
       <button role="tab" data-tab="suggestions" aria-selected="false">Suggestions <span id="sugg-badge" class="pill new" hidden></span></button>
+      <button role="tab" data-tab="trips" aria-selected="false">Trajets</button>
       <button role="tab" data-tab="users" aria-selected="false">Fiabilité</button>
       <button role="tab" data-tab="lines" aria-selected="false">Lignes ajoutées</button>
       <button role="tab" data-tab="notify" aria-selected="false">Notifications</button>
@@ -137,6 +138,28 @@
       </div>
       <div class="status" id="sugg-status"></div>
       <div id="sugg-list"></div>
+    </div>
+
+    <div data-panel="trips" hidden>
+      <h2>Journal des trajets</h2>
+      <p class="hint">Chaque partage, avec ce qui s'est passé : vérification, position validée, déviation, refus (avec la raison et les mesures GPS) et fin. Un même état répété n'apparaît qu'une fois, avec « ×N ». Cliquez sur un trajet pour voir sa chronologie.</p>
+      <div class="filters" style="align-items:center">
+        <select id="tl-hours" style="width:auto"><option value="6">6 h</option><option value="24" selected>24 h</option><option value="168">7 jours</option><option value="720">30 jours</option></select>
+        <select id="tl-status" style="width:auto">
+          <option value="">Tous les trajets</option><option value="active">En cours</option><option value="validated">Validés au moins une fois</option>
+          <option value="rejected">Avec des refus</option><option value="never_validated">Jamais validés</option><option value="mocked">Faux GPS</option>
+        </select>
+        <input id="tl-line" placeholder="Ligne (ex. 347, TGM)" style="max-width:170px">
+        <input id="tl-user" placeholder="Utilisateur (début de l'identifiant)" style="max-width:260px">
+      </div>
+      <div class="kpis" id="tl-reasons" style="margin:8px 0"></div>
+      <div class="status" id="tl-status-msg"></div>
+      <section class="panel table-wrap">
+        <table>
+          <thead><tr><th>Début</th><th>Ligne</th><th>Utilisateur</th><th class="n">Durée</th><th class="n">Validées</th><th class="n">Refusées</th><th>Dernier refus</th><th>Fin</th></tr></thead>
+          <tbody id="tl-rows"></tbody>
+        </table>
+      </section>
     </div>
 
     <div data-panel="users" hidden>
@@ -401,6 +424,61 @@ $("ver-form").addEventListener("submit", async (e) => {
   } catch (err) {
     $("ver-status").innerHTML = `<span class="err">${esc(err.message)}</span>`;
   }
+});
+
+// ---------------- Journal des trajets ----------------
+const KIND = { started: ["▶️", "Partage démarré"], checking: ["⏳", "Vérification"], on_route: ["✅", "Position validée"],
+  detour: ["↪️", "Déviation tolérée"], rejected: ["⛔", "Refusé"], ended: ["⏹️", "Fin du partage"] };
+const fmtDur = (s) => (s < 60 ? `${s} s` : s < 3600 ? `${Math.round(s / 60)} min` : `${Math.floor(s / 3600)} h ${String(Math.round((s % 3600) / 60)).padStart(2, "0")}`);
+const fmtTime = (iso) => new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+let tlTrips = [];
+
+function eventDetails(e) {
+  const bits = [];
+  if (e.line) bits.push(`ligne ${esc(e.line)} → ${esc(e.headsign || "")}`);
+  if (e.reputation !== undefined) bits.push(`fiabilité ${Math.round(e.reputation * 100)} %`);
+  if (e.app) bits.push(`app ${esc(e.app)}`);
+  if (e.fixes !== undefined) bits.push(`${e.precise ?? e.fixes}/${e.fixes} points précis`);
+  if (e.accuracy_m !== undefined) bits.push(`précision GPS ${Math.round(e.accuracy_m)} m`);
+  if (e.offset_m !== undefined) bits.push(`à ${Math.round(e.offset_m)} m de la ligne`);
+  if (e.speed_kmh !== undefined) bits.push(`${Math.round(e.speed_kmh)} km/h`);
+  if (e.along_m !== undefined) bits.push(`${fmtKm(e.along_m)} depuis le terminus`);
+  if (e.trusted === false) bits.push("utilisateur non fiable (masqué)");
+  if (e.validated !== undefined) bits.push(`${e.validated} validées, ${e.refused} refusées`);
+  return bits.join(" · ");
+}
+
+async function loadTrips() {
+  const params = new URLSearchParams({ hours: $("tl-hours").value });
+  if ($("tl-status").value) params.set("status", $("tl-status").value);
+  if ($("tl-line").value.trim()) params.set("line", $("tl-line").value.trim());
+  if ($("tl-user").value.trim()) params.set("user", $("tl-user").value.trim());
+  const r = await call(`/trips?${params}`);
+  tlTrips = r.trips;
+  $("tl-reasons").innerHTML = r.reasons.length ? r.reasons.map((x) => kpi(x.count, `refus : ${x.reason}`)).join("") : "";
+  $("tl-rows").innerHTML = r.trips.length ? r.trips.map((x, i) => `<tr data-i="${i}" style="cursor:pointer">
+      <td>${esc(fmtTime(x.started_at))}</td><td>${esc(x.line)}<br><span class="muted">→ ${esc(x.headsign)}</span></td>
+      <td><button class="user-link" data-user="${esc(x.user_id)}"><code>${esc(x.user)}</code></button></td>
+      <td class="n">${fmtDur(x.duration_s)}</td><td class="n">${x.validated}</td><td class="n">${x.refused}</td>
+      <td>${x.last_reject_reason ? `<span class="err">${esc(x.last_reject_reason)}</span>` : '<span class="muted">—</span>'}</td>
+      <td>${x.active ? '<span class="pill fiable">en cours</span>' : esc(x.end_reason || "")}</td></tr>
+      <tr class="tl-detail" data-for="${i}" hidden><td colspan="8">${x.events.map((e) => `<div style="padding:3px 0">
+        <span class="muted">${esc(fmtTime(e.at))}${e.n > 1 ? ` → ${esc(fmtTime(e.last))}` : ""}</span>
+        ${KIND[e.kind]?.[0] || "•"} <strong>${esc(KIND[e.kind]?.[1] || e.kind)}</strong>${e.n > 1 ? ` <span class="pill read">×${e.n}</span>` : ""}
+        ${e.reason ? ` : ${esc(e.reason)}` : ""} <span class="muted">${eventDetails(e)}</span></div>`).join("")}</td></tr>`).join("")
+    : `<tr><td colspan="8" class="muted">Aucun trajet sur cette période.</td></tr>`;
+}
+
+["tl-hours", "tl-status"].forEach((id) => $(id).addEventListener("change", () => loadTrips().catch(() => {})));
+let tlTimer = null;
+["tl-line", "tl-user"].forEach((id) => $(id).addEventListener("input", () => { clearTimeout(tlTimer); tlTimer = setTimeout(() => loadTrips().catch(() => {}), 300); }));
+$("tl-rows").addEventListener("click", (e) => {
+  const u = e.target.closest("button.user-link");
+  if (u) { $("u-search").value = u.dataset.user.slice(0, 8); show("users"); return; }
+  const tr = e.target.closest("tr[data-i]");
+  if (!tr) return;
+  const detail = document.querySelector(`tr.tl-detail[data-for="${tr.dataset.i}"]`);
+  if (detail) detail.hidden = !detail.hidden;
 });
 
 // ---------------- Fiabilité des utilisateurs ----------------
@@ -701,7 +779,7 @@ function show(tab) {
   document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
   document.querySelectorAll("[data-panel]").forEach((p) => (p.hidden = p.dataset.panel !== tab));
   clearInterval(liveTimer);
-  const load = { live: loadLive, stats: loadStats, suggestions: loadSuggestions, users: loadUsers, lines: loadCustomLines, notify: loadTelegram, network: loadNetwork }[tab];
+  const load = { live: loadLive, stats: loadStats, suggestions: loadSuggestions, trips: loadTrips, users: loadUsers, lines: loadCustomLines, notify: loadTelegram, network: loadNetwork }[tab];
   load().catch((e) => console.error(e));
   if (tab === "live") liveTimer = setInterval(() => loadLive().catch(() => {}), 10000);
 }
