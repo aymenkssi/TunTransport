@@ -1,9 +1,14 @@
 // Native map: the MapLibre page in a WebView, fed with postMessage.
+// If the WebView's renderer crashes (GPU driver, outdated Android System WebView), Android closes
+// the whole app unless the crash is handled: the map is reloaded, then replaced by a message.
 import { useEffect, useRef, useState } from "react";
-import { StyleProp, ViewStyle } from "react-native";
+import { StyleProp, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 
 import { MAP_HTML, MapData } from "@/src/components/map-html";
+import { spacing, type, useColors } from "@/src/theme";
+
+const MAX_RELOADS = 2;
 
 type Props = {
   data: MapData;
@@ -15,7 +20,9 @@ type Props = {
 
 export function LineMap({ data, onSelectStop, onSelectVehicle, onPressMap, style }: Props) {
   const ref = useRef<WebView>(null);
+  const colors = useColors();
   const [loaded, setLoaded] = useState(false);
+  const [crashes, setCrashes] = useState(0);
 
   useEffect(() => {
     if (loaded) ref.current?.postMessage(JSON.stringify(data));
@@ -31,9 +38,27 @@ export function LineMap({ data, onSelectStop, onSelectVehicle, onPressMap, style
     } catch {}
   };
 
+  const onCrash = () => {
+    setLoaded(false);
+    setCrashes((n) => n + 1);
+  };
+
+  if (crashes > MAX_RELOADS) {
+    return (
+      <View style={[style, styles.fallback, { backgroundColor: colors.surfaceSecondary }]}>
+        <Text style={[styles.fallbackText, { color: colors.onSurfaceSecondary }]}>
+          La carte ne peut pas s’afficher sur ce téléphone. Mettez à jour « Android System WebView » et « Chrome » dans le Play Store, puis rouvrez l’application.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <WebView
+      key={crashes}
       ref={ref}
+      onRenderProcessGone={onCrash}
+      onContentProcessDidTerminate={onCrash}
       source={{ html: MAP_HTML, baseUrl: "https://localhost" }}
       originWhitelist={["*"]}
       onMessage={onMessage}
@@ -42,3 +67,8 @@ export function LineMap({ data, onSelectStop, onSelectVehicle, onPressMap, style
     />
   );
 }
+
+const styles = StyleSheet.create({
+  fallback: { alignItems: "center", justifyContent: "center", padding: spacing.md },
+  fallbackText: { fontSize: type.base, textAlign: "center", lineHeight: 20 },
+});
