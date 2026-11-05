@@ -163,7 +163,11 @@ export default function LineScreen() {
           <View style={styles.shareCard}>
             <Text style={styles.shareTitle}>Vous partagez ce trajet vers {share.headsign}</Text>
             <Text style={styles.text}>
-              {share.status === "rejected" ? `Non diffusé : ${share.reason}.` : SHARE_STATUS[share.status]}
+              {share.status === "rejected"
+                ? `Non diffusé : ${share.reason}.`
+                : share.status === "on_route" && share.reason === "déviation"
+                  ? "Déviation détectée : le véhicule reste partagé, placé sur la ligne au plus près."
+                  : SHARE_STATUS[share.status]}
             </Text>
             {share.speedMps !== null && share.status === "on_route" && (
               <Text style={styles.sub}>{Math.round(share.speedMps * 3.6)} km/h</Text>

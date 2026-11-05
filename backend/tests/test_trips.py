@@ -156,3 +156,31 @@ def test_network_live_map_lists_every_line(api, clock, user):
     assert found[0]["status"] == "fiable" and abs(found[0]["lat"] - LAT) < 1e-4
     clock.advance(400)
     assert api.get("/api/vehicles/live").json() == []
+
+
+def detour_positions(api, clock, h, trip_id, north_m, start_lon):
+    fixes = trace(clock, start_lon=start_lon, lat=LAT + north_m / 111_000)
+    return api.post(f"/api/trips/{trip_id}/positions", json={"fixes": fixes}, headers=h).json()
+
+
+def test_validated_trip_tolerates_a_detour(api, clock, user):
+    h = user()
+    trip_id, r = ride(api, clock, h)
+    assert r.json()["status"] == "on_route"
+    clock.advance(60)
+    r = detour_positions(api, clock, h, trip_id, north_m=500, start_lon=10.166)  # route barrée : 500 m au nord
+    assert (r["status"], r["reason"]) == ("on_route", "déviation")
+    assert len(vehicles(api)) == 1   # le bus reste affiché, ramené sur la ligne
+    clock.advance(60)
+    assert detour_positions(api, clock, h, trip_id, north_m=1200, start_lon=10.172)["status"] == "rejected"  # trop loin
+
+
+def test_detour_needs_a_recently_validated_trip(api, clock, user):
+    h = user()
+    trip_id, _ = ride(api, clock, h, lat=LAT + 500 / 111_000)  # jamais sur la ligne : refusé
+    assert detour_positions(api, clock, h, trip_id, north_m=500, start_lon=10.166)["status"] == "rejected"
+    h2 = user()
+    trip2, r = ride(api, clock, h2)
+    assert r.json()["status"] == "on_route"
+    clock.advance(16 * 60)  # déviation de plus de 15 min
+    assert detour_positions(api, clock, h2, trip2, north_m=500, start_lon=10.166)["status"] == "rejected"

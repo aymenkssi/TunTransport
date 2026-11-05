@@ -30,6 +30,8 @@ MAX_TRIP_S = 2 * 3600
 MAX_TRIPS_PER_DAY = 40
 MAX_CLOCK_SKEW_S = 120.0  # fixes plus vieux ou dans le futur : ignorés
 POSITION_COOLDOWN_S = 2.0
+DETOUR_MAX_S = 15 * 60  # déviation tolérée au plus 15 min après la dernière position sur le tracé
+DETOUR_REASON = "déviation"
 
 router = APIRouter(prefix="/api")
 
@@ -57,7 +59,8 @@ class TripStarted(BaseModel):
 
 class PositionResult(BaseModel):
     # "checking" : pas encore assez de points ; "on_route" : position publiée ;
-    # "rejected" : trace incompatible, rien n'est publié.
+    # "rejected" : trace incompatible, rien n'est publié. Une déviation tolérée renvoie "on_route"
+    # avec reason="déviation" (les anciennes versions de l'application continuent de partager).
     status: Literal["checking", "on_route", "rejected"]
     reason: Optional[str] = None
     along_m: Optional[float] = None
@@ -178,7 +181,10 @@ async def post_positions(trip_id: str, trace: network.Trace, user: dict = Depend
     line = network.current().line(trip["line_id"])
     shape = line.shapes[trip["direction"]]
     fixes = [f.to_fix() for f in trace.fixes if abs(f.t - t) <= MAX_CLOCK_SKEW_S]
-    result = match_trace(fixes, shape, line.max_offset_m)
+    last_on_line = trip.get("last_on_line_ts")
+    result = match_trace(fixes, shape, line.max_offset_m,
+                         allow_detour=last_on_line is not None and t - last_on_line <= DETOUR_MAX_S)
+    detour = result.reason == "detour"
 
     if not result.ok:
         # Plus rien n'est publié dès que la trace n'est plus validée.
@@ -187,11 +193,12 @@ async def post_positions(trip_id: str, trace: network.Trace, user: dict = Depend
             return PositionResult(status="checking")
         return await _reject(trip, REASONS[result.reason])
 
-    track = trust.update_track(trip.get("track", []), t, result.along_m)
-    await db.trips.update_one({"id": trip_id}, {"$set": {"track": track}})
-    problem = trust.motion_problem(track, t, shape.length_m)
-    if problem:
-        return await _reject(trip, trust.REASONS[problem])
+    if not detour:  # en déviation, la position sur la ligne est approximative : pas de contrôle de mouvement
+        track = trust.update_track(trip.get("track", []), t, result.along_m)
+        await db.trips.update_one({"id": trip_id}, {"$set": {"track": track, "last_on_line_ts": t}})
+        problem = trust.motion_problem(track, t, shape.length_m)
+        if problem:
+            return await _reject(trip, trust.REASONS[problem])
 
     await db.contributions.update_one(
         {"trip_id": trip_id},
@@ -216,7 +223,8 @@ async def post_positions(trip_id: str, trace: network.Trace, user: dict = Depend
     for vehicle in vh.cluster_vehicles(await _fresh_contributions(trip["line_id"]), t):
         if trip_id in vehicle.contributors and len(vehicle.contributors) >= 2:
             await db.trips.update_many({"id": {"$in": list(vehicle.contributors)}}, {"$set": {"confirmed": True}})
-    return PositionResult(status="on_route", along_m=round(result.along_m), speed_mps=round(result.speed_mps, 1))
+    return PositionResult(status="on_route", reason=DETOUR_REASON if detour else None,
+                          along_m=round(result.along_m), speed_mps=round(result.speed_mps, 1))
 
 
 @router.post("/trips/{trip_id}/end")
