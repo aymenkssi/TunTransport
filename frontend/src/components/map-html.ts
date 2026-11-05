@@ -28,8 +28,19 @@ export const MAP_HTML = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<style>html,body,#map{margin:0;height:100%;width:100%;background:#e5e7eb}</style>
-</head><body><div id="map"></div><script>
+<style>html,body,#map{margin:0;height:100%;width:100%;background:#e5e7eb}
+#pad{position:absolute;right:10px;bottom:72px;z-index:2;display:grid;grid-template-columns:40px 40px;gap:6px;-webkit-user-select:none;user-select:none}
+#pad button{width:40px;height:40px;border:0;border-radius:10px;background:#fff;color:#111827;font:600 22px/40px system-ui,sans-serif;padding:0;
+  box-shadow:0 1px 4px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#pad button:active{background:#e5e7eb}
+#pad svg{width:20px;height:20px;stroke:#111827;stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round}</style>
+</head><body><div id="map"></div>
+<div id="pad">
+  <button id="zin" aria-label="Zoomer">+</button><button id="zout" aria-label="Dézoomer">&minus;</button>
+  <button id="pleft" aria-label="Aller à gauche"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <button id="pright" aria-label="Aller à droite"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+</div>
+<script>
 var STATUS = { "fiable": "#047857", "probable": "#1D4ED8", "obsolète": "#9CA3AF" };
 // Arabic labels: without this plugin MapLibre draws them unjoined and left to right.
 try {
@@ -41,8 +52,25 @@ var map = new maplibregl.Map({
   style: "https://tiles.openfreemap.org/styles/liberty",
   center: [10.1815, 36.8065],
   zoom: 11,
-  attributionControl: { compact: true }
+  attributionControl: { compact: true },
+  // Smoother on phones: at most 2 pixels per point (3 on many screens triples the work),
+  // no fade-in of labels, no rotation or tilt by accident (the map stays north-up).
+  pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+  fadeDuration: 0,
+  dragRotate: false,
+  pitchWithRotate: false,
+  touchPitch: false,
+  maxPitch: 0
 });
+map.touchZoomRotate.disableRotation();
+function tap(id, fn) {
+  var el = document.getElementById(id);
+  el.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); fn(); });
+}
+tap("zin", function () { map.zoomIn({ duration: 250 }); });
+tap("zout", function () { map.zoomOut({ duration: 250 }); });
+tap("pleft", function () { map.panBy([-map.getContainer().clientWidth * 0.35, 0], { duration: 300 }); });
+tap("pright", function () { map.panBy([map.getContainer().clientWidth * 0.35, 0], { duration: 300 }); });
 var ready = false, pending = null, lastFit = "", lastCenter = "";
 function fc(features) { return { type: "FeatureCollection", features: features }; }
 function point(lat, lon, props) { return { type: "Feature", properties: props || {}, geometry: { type: "Point", coordinates: [lon, lat] } }; }
