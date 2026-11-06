@@ -36,6 +36,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="live"
+        options={{
+          title: "En direct",
+          tabBarIcon: ({ color, size }) => <Ionicons name="radio" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="route"
         options={{
           title: "Itinéraire",
